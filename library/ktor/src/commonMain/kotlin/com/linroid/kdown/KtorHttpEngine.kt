@@ -45,7 +45,7 @@ class KtorHttpEngine(
     } catch (e: KDownError) {
       throw e
     } catch (e: Exception) {
-      kdownLogger.e("KtorHttpEngine") { "Network error: ${e.message}" }
+      KDownLogger.e("KtorHttpEngine") { "Network error: ${e.message}" }
       throw KDownError.Network(e)
     }
   }
@@ -91,7 +91,7 @@ class KtorHttpEngine(
     } catch (e: KDownError) {
       throw e
     } catch (e: Exception) {
-      kdownLogger.e("KtorHttpEngine") { "Network error: ${e.message}" }
+      KDownLogger.e("KtorHttpEngine") { "Network error: ${e.message}" }
       throw KDownError.Network(e)
     }
   }
