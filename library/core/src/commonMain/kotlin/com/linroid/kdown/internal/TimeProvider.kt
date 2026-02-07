@@ -1,7 +1,5 @@
 package com.linroid.kdown.internal
 
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
+import kotlinx.datetime.Clock
 
-@OptIn(ExperimentalTime::class)
 internal fun currentTimeMillis(): Long = Clock.System.now().toEpochMilliseconds()
