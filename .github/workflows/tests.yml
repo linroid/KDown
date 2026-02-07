@@ -10,6 +10,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   jvm-tests:
     name: JVM Tests
@@ -27,12 +32,12 @@ jobs:
       - name: Run JVM tests
         run: ./gradlew jvmTest
 
-      - name: Upload test reports
-        if: failure()
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jvm-test-reports
-          path: '**/build/reports/tests/jvmTest/'
+          name: test-results-jvm
+          path: '**/build/test-results/**/TEST-*.xml'
 
   android-tests:
     name: Android Unit Tests
@@ -50,12 +55,12 @@ jobs:
       - name: Run Android unit tests
         run: ./gradlew testDebugUnitTest
 
-      - name: Upload test reports
-        if: failure()
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-test-reports
-          path: '**/build/reports/tests/testDebugUnitTest/'
+          name: test-results-android
+          path: '**/build/test-results/**/TEST-*.xml'
 
   ios-tests:
     name: iOS Tests
@@ -73,12 +78,12 @@ jobs:
       - name: Run iOS simulator tests
         run: ./gradlew iosSimulatorArm64Test
 
-      - name: Upload test reports
-        if: failure()
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-test-reports
-          path: '**/build/reports/tests/iosSimulatorArm64Test/'
+          name: test-results-ios
+          path: '**/build/test-results/**/TEST-*.xml'
 
   wasmjs-tests:
     name: WasmJs Tests
@@ -96,9 +101,26 @@ jobs:
       - name: Run WasmJs browser tests
         run: ./gradlew wasmJsBrowserTest
 
-      - name: Upload test reports
-        if: failure()
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wasmjs-test-reports
-          path: '**/build/reports/tests/wasmJsBrowserTest/'
+          name: test-results-wasmjs
+          path: '**/build/test-results/**/TEST-*.xml'
+
+  publish-results:
+    name: Publish Test Results
+    runs-on: ubuntu-latest
+    needs: [ jvm-tests, android-tests, ios-tests, wasmjs-tests ]
+    if: always()
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          merge-multiple: true
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: '**/TEST-*.xml'
