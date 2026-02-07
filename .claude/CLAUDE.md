@@ -67,13 +67,26 @@ Android, JVM/Desktop, iOS, and WebAssembly platforms.
 - Includes: downloadedBytes, totalBytes, percent, speed
 
 ### 8. Logging System (✅ Pluggable `Logger` interface)
+- Three logging options:
+  1. `Logger.None` (default): Zero-overhead, no logging
+  2. `Logger.console()`: Platform-specific console output
+  3. `KermitLogger`: Optional Kermit integration (separate module)
 - Platform-specific console implementations:
   - JVM: `println` / `System.err`
-  - Android: Android `Log` API with tag prefixing
+  - Android: Android `Log` API with tag prefixing ("KDown.*")
   - iOS: `NSLog`
+  - WebAssembly: `println` (browser dev tools)
 - Levels: verbose, debug, info, warn, error
-- Default: `Logger.None` (no logging)
+- Lazy evaluation via lambda parameters for zero cost when disabled
+- Internal `KDownLogger` wrapper for consistent tag formatting: `[Tag] message`
+- Comprehensive logging coverage:
+  - KDown lifecycle (init, start, pause, resume, cancel)
+  - Server detection and capabilities
+  - Segment operations (start, completion, progress)
+  - HTTP requests and errors
+  - Retry attempts
 - Kermit integration available via `library/kermit` module
+- See LOGGING.md for detailed usage examples
 
 ### 9. Testing (✅ Comprehensive test suite)
 - Unit tests for: SegmentCalculator, SegmentDownloader, InMemoryMetadataStore
@@ -93,6 +106,29 @@ Known limitations (documented in README.md):
 2. ❌ No bandwidth throttling
 3. ⚠️ WebAssembly file writes limited by browser APIs (basic support only)
 4. ⚠️ iOS support is best-effort via expect/actual (functional but not extensively tested)
+
+## Usage Examples
+
+### Basic Setup with Logging
+
+```kotlin
+// Option 1: No logging (default, zero overhead)
+val kdown = KDown(httpEngine = KtorHttpEngine())
+
+// Option 2: Console logging (development/debugging)
+val kdown = KDown(
+  httpEngine = KtorHttpEngine(),
+  logger = Logger.console()
+)
+
+// Option 3: Kermit structured logging (recommended for production)
+val kdown = KDown(
+  httpEngine = KtorHttpEngine(),
+  logger = KermitLogger(minSeverity = Severity.Info)
+)
+```
+
+See LOGGING.md for detailed logging guide with example output.
 
 ## Development Guidelines
 
@@ -118,11 +154,16 @@ When working on this project:
 - Mock HTTP responses for testing resume logic
 
 ### Logging
-- Use `KDownLogger.logger` for all internal logging
+- Use `KDownLogger` for all internal logging (automatically prefixes tags)
+- Pass component tag as first parameter: `KDownLogger.i("KDown") { "message" }`
 - Log at appropriate levels:
-  - `verbose`: Detailed flow information
-  - `debug`: Important state changes
-  - `info`: User-facing events (download started, completed)
-  - `warn`: Recoverable errors, retries
-  - `error`: Fatal errors
-- Include context in log messages (task ID, segment index, etc.)
+  - `verbose`: Detailed flow information (segment-level progress, byte details)
+  - `debug`: Important state changes (server detection, metadata operations, segment start/completion)
+  - `info`: User-facing events (download started/paused/resumed/completed, server capabilities)
+  - `warn`: Recoverable errors, retries, validation warnings
+  - `error`: Fatal errors (download failures, network errors)
+- Include context in log messages (task ID, segment index, URLs, byte ranges)
+- Use lazy lambdas for message construction: `logger.d { "expensive $computation" }`
+  - Messages are only computed if logging is enabled
+  - This ensures zero overhead when using `Logger.None` (default)
+- Common component tags: "KDown", "Coordinator", "SegmentDownloader", "RangeDetector", "KtorHttpEngine"
