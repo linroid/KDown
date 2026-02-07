@@ -18,12 +18,16 @@ class KtorHttpEngine(
 
   override suspend fun head(url: String, headers: Map<String, String>): ServerInfo {
     try {
+      KDownLogger.d("KtorHttpEngine") { "HEAD request: $url" }
       val customHeaders = headers
       val response = client.head(url) {
         customHeaders.forEach { (name, value) -> header(name, value) }
       }
 
       if (!response.status.isSuccess()) {
+        KDownLogger.e("KtorHttpEngine") {
+          "HTTP error ${response.status.value}: ${response.status.description}"
+        }
         throw KDownError.Http(response.status.value, response.status.description)
       }
 
@@ -41,6 +45,7 @@ class KtorHttpEngine(
     } catch (e: KDownError) {
       throw e
     } catch (e: Exception) {
+      KDownLogger.e("KtorHttpEngine") { "Network error: ${e.message}" }
       throw KDownError.Network(e)
     }
   }
@@ -52,6 +57,11 @@ class KtorHttpEngine(
     onData: suspend (ByteArray) -> Unit
   ) {
     try {
+      if (range != null) {
+        KDownLogger.d("KtorHttpEngine") { "GET request: $url, range=${range.first}-${range.last}" }
+      } else {
+        KDownLogger.d("KtorHttpEngine") { "GET request: $url (no range)" }
+      }
       val customHeaders = headers
       client.prepareGet(url) {
         customHeaders.forEach { (name, value) -> header(name, value) }
@@ -61,6 +71,9 @@ class KtorHttpEngine(
       }.execute { response ->
         val status = response.status
         if (!status.isSuccess()) {
+          KDownLogger.e("KtorHttpEngine") {
+            "HTTP error ${status.value}: ${status.description}"
+          }
           throw KDownError.Http(status.value, status.description)
         }
 
@@ -78,6 +91,7 @@ class KtorHttpEngine(
     } catch (e: KDownError) {
       throw e
     } catch (e: Exception) {
+      KDownLogger.e("KtorHttpEngine") { "Network error: ${e.message}" }
       throw KDownError.Network(e)
     }
   }

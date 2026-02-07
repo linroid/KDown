@@ -2,6 +2,7 @@ package com.linroid.kdown.internal
 
 import com.linroid.kdown.FileAccessor
 import com.linroid.kdown.HttpEngine
+import com.linroid.kdown.KDownLogger
 import com.linroid.kdown.model.Segment
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
@@ -20,6 +21,12 @@ internal class SegmentDownloader(
       return segment
     }
 
+    val remainingBytes = segment.totalBytes - segment.downloadedBytes
+    KDownLogger.d("SegmentDownloader") {
+      "Starting segment ${segment.index}: range ${segment.start}..${segment.end} ($remainingBytes bytes remaining)"
+    }
+
+    val initialBytes = segment.downloadedBytes
     var downloadedBytes = segment.downloadedBytes
     val range = segment.currentOffset..segment.end
 
@@ -30,6 +37,10 @@ internal class SegmentDownloader(
       fileAccessor.writeAt(writeOffset, data)
       downloadedBytes += data.size
       onProgress(downloadedBytes)
+    }
+
+    KDownLogger.d("SegmentDownloader") {
+      "Completed segment ${segment.index}: downloaded ${downloadedBytes - initialBytes} bytes"
     }
 
     return segment.copy(downloadedBytes = downloadedBytes)
