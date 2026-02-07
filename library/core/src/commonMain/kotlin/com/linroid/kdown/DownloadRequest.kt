@@ -16,7 +16,6 @@ data class DownloadRequest(
   }
 
   companion object {
-    @OptIn(ExperimentalUuidApi::class)
     fun generateTaskId(): String = Uuid.random().toString()
   }
 }

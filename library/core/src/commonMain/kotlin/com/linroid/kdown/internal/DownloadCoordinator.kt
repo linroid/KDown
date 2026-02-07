@@ -90,7 +90,7 @@ internal class DownloadCoordinator(
     }
 
     val now = currentTimeMillis()
-    var metadata = DownloadMetadata(
+    val metadata = DownloadMetadata(
       taskId = request.taskId,
       url = request.url,
       destPath = request.destPath,
@@ -137,11 +137,10 @@ internal class DownloadCoordinator(
   ) {
     var metadata = initialMetadata
     var retryCount = 0
-    var lastError: KDownError? = null
 
     while (true) {
       try {
-        metadata = downloadSegments(taskId, metadata, fileAccessor, stateFlow)
+        downloadSegments(taskId, metadata, fileAccessor, stateFlow)
         return
       } catch (e: CancellationException) {
         throw e
@@ -155,7 +154,6 @@ internal class DownloadCoordinator(
           throw error
         }
 
-        lastError = error
         retryCount++
         val delayMs = config.retryDelayMs * (1 shl (retryCount - 1))
         delay(delayMs)
