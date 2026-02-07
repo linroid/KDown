@@ -11,6 +11,8 @@
 
 A Kotlin Multiplatform download library with pause/resume, multi-threaded segmented downloads, and progress tracking.
 
+> **WIP:** This project is under active development. APIs may change and some features are not yet complete. Contributions and feedback are welcome!
+
 ## Features
 
 - **Multi-platform** - Android, iOS, JVM/Desktop, and WebAssembly (Wasm)
