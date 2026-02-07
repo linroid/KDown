@@ -29,8 +29,7 @@ internal class DownloadCoordinator(
   private val httpEngine: HttpEngine,
   private val metadataStore: MetadataStore,
   private val config: DownloadConfig,
-  private val fileAccessorFactory: (Path) -> FileAccessor,
-  private val logger: KDownLogger
+  private val fileAccessorFactory: (Path) -> FileAccessor
 ) {
   private val mutex = Mutex()
   private val activeDownloads = mutableMapOf<String, ActiveDownload>()
@@ -79,20 +78,20 @@ internal class DownloadCoordinator(
     request: DownloadRequest,
     stateFlow: MutableStateFlow<DownloadState>
   ) {
-    logger.d("Coordinator") { "Detecting server capabilities for ${request.url}" }
-    val detector = RangeSupportDetector(httpEngine, logger)
+    KDownLogger.d("Coordinator") { "Detecting server capabilities for ${request.url}" }
+    val detector = RangeSupportDetector(httpEngine)
     val serverInfo = detector.detect(request.url, request.headers)
 
     val totalBytes = serverInfo.contentLength
       ?: throw KDownError.Unsupported
 
     val segments = if (serverInfo.supportsResume && request.connections > 1) {
-      logger.i("Coordinator") {
+      KDownLogger.i("Coordinator") {
         "Server supports range requests. Using ${request.connections} connections, totalBytes=$totalBytes"
       }
       SegmentCalculator.calculateSegments(totalBytes, request.connections)
     } else {
-      logger.i("Coordinator") {
+      KDownLogger.i("Coordinator") {
         "Server does not support range requests or single connection requested. Using 1 connection, totalBytes=$totalBytes"
       }
       SegmentCalculator.singleSegment(totalBytes)
@@ -123,16 +122,16 @@ internal class DownloadCoordinator(
     }
 
     try {
-      logger.d("Coordinator") { "Preallocating $totalBytes bytes for taskId=${request.taskId}" }
+      KDownLogger.d("Coordinator") { "Preallocating $totalBytes bytes for taskId=${request.taskId}" }
       fileAccessor.preallocate(totalBytes)
-      logger.d("Coordinator") { "Saving metadata for taskId=${request.taskId}" }
+      KDownLogger.d("Coordinator") { "Saving metadata for taskId=${request.taskId}" }
       metadataStore.save(request.taskId, metadata)
 
       downloadWithRetry(request.taskId, metadata, fileAccessor, stateFlow)
 
       fileAccessor.flush()
       metadataStore.clear(request.taskId)
-      logger.i("Coordinator") { "Download completed successfully for taskId=${request.taskId}" }
+      KDownLogger.i("Coordinator") { "Download completed successfully for taskId=${request.taskId}" }
       stateFlow.value = DownloadState.Completed(request.destPath)
     } finally {
       fileAccessor.close()
@@ -164,13 +163,13 @@ internal class DownloadCoordinator(
         }
 
         if (!error.isRetryable || retryCount >= config.retryCount) {
-          logger.e("Coordinator") { "Download failed after $retryCount retries: ${error.message}" }
+          KDownLogger.e("Coordinator") { "Download failed after $retryCount retries: ${error.message}" }
           throw error
         }
 
         retryCount++
         val delayMs = config.retryDelayMs * (1 shl (retryCount - 1))
-        logger.w("Coordinator") { "Retry attempt $retryCount after ${delayMs}ms delay: ${error.message}" }
+        KDownLogger.w("Coordinator") { "Retry attempt $retryCount after ${delayMs}ms delay: ${error.message}" }
         delay(delayMs)
 
         metadata = metadataStore.load(taskId) ?: metadata
@@ -218,7 +217,7 @@ internal class DownloadCoordinator(
     coroutineScope {
       val results = incompleteSegments.map { segment ->
         async {
-          val downloader = SegmentDownloader(httpEngine, fileAccessor, logger)
+          val downloader = SegmentDownloader(httpEngine, fileAccessor)
           downloader.download(metadata.url, segment, metadata.headers) { bytesDownloaded ->
             segmentMutex.withLock {
               segmentProgress[segment.index] = bytesDownloaded
@@ -255,11 +254,11 @@ internal class DownloadCoordinator(
   suspend fun pause(taskId: String) {
     mutex.withLock {
       val active = activeDownloads[taskId] ?: return
-      logger.i("Coordinator") { "Pausing download for taskId=$taskId" }
+      KDownLogger.i("Coordinator") { "Pausing download for taskId=$taskId" }
       active.job.cancel()
 
       active.metadata?.let { metadata ->
-        logger.d("Coordinator") { "Saving pause state for taskId=$taskId" }
+        KDownLogger.d("Coordinator") { "Saving pause state for taskId=$taskId" }
         metadataStore.save(taskId, metadata.copy(updatedAt = currentTimeMillis()))
       }
 
@@ -315,9 +314,9 @@ internal class DownloadCoordinator(
     metadata: DownloadMetadata,
     stateFlow: MutableStateFlow<DownloadState>
   ) {
-    logger.i("Coordinator") { "Resuming download for taskId=$taskId, url=${metadata.url}" }
-    logger.d("Coordinator") { "Validating server state for resume" }
-    val detector = RangeSupportDetector(httpEngine, logger)
+    KDownLogger.i("Coordinator") { "Resuming download for taskId=$taskId, url=${metadata.url}" }
+    KDownLogger.d("Coordinator") { "Validating server state for resume" }
+    val detector = RangeSupportDetector(httpEngine)
     val serverInfo = detector.detect(metadata.url, metadata.headers)
 
     if (metadata.etag != null && serverInfo.etag != metadata.etag) {
@@ -329,7 +328,7 @@ internal class DownloadCoordinator(
       KDownLogger.w("Coordinator") { "Last-Modified mismatch - file has changed on server" }
       throw KDownError.ValidationFailed("Last-Modified mismatch - file has changed on server")
     }
-    logger.d("Coordinator") { "Server validation passed, continuing resume" }
+    KDownLogger.d("Coordinator") { "Server validation passed, continuing resume" }
 
     val fileAccessor = fileAccessorFactory(metadata.destPath)
 
@@ -355,7 +354,7 @@ internal class DownloadCoordinator(
   }
 
   suspend fun cancel(taskId: String) {
-    logger.i("Coordinator") { "Canceling download for taskId=$taskId" }
+    KDownLogger.i("Coordinator") { "Canceling download for taskId=$taskId" }
     mutex.withLock {
       val active = activeDownloads[taskId]
       active?.job?.cancel()

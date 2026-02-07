@@ -5,13 +5,12 @@ import com.linroid.kdown.KDownLogger
 import com.linroid.kdown.model.ServerInfo
 
 internal class RangeSupportDetector(
-  private val httpEngine: HttpEngine,
-  private val logger: KDownLogger
+  private val httpEngine: HttpEngine
 ) {
   suspend fun detect(url: String, headers: Map<String, String> = emptyMap()): ServerInfo {
-    logger.d("RangeDetector") { "Sending HEAD request to $url" }
+    KDownLogger.d("RangeDetector") { "Sending HEAD request to $url" }
     val serverInfo = httpEngine.head(url, headers)
-    logger.i("RangeDetector") {
+    KDownLogger.i("RangeDetector") {
       "Server info: contentLength=${serverInfo.contentLength}, " +
         "acceptRanges=${serverInfo.acceptRanges}, " +
         "supportsResume=${serverInfo.supportsResume}, " +
