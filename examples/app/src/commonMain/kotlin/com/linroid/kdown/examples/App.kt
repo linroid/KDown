@@ -24,7 +24,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -166,8 +165,7 @@ fun App() {
                 modifier = Modifier.weight(1f),
                 label = { Text("Custom URL") },
                 singleLine = true,
-                placeholder = { Text("https://example.com/file.zip") },
-                colors = TextFieldDefaults.outlinedTextFieldColors()
+                placeholder = { Text("https://example.com/file.zip") }
               )
               OutlinedTextField(
                 value = customFileName,
@@ -528,10 +526,22 @@ private fun startDownload(
 
 private fun formatBytes(bytes: Long): String {
   if (bytes < 0) return "--"
+  val kb = 1024L
+  val mb = kb * 1024
+  val gb = mb * 1024
   return when {
-    bytes < 1024 -> "$bytes B"
-    bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
-    bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
-    else -> String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024))
+    bytes < kb -> "$bytes B"
+    bytes < mb -> {
+      val tenths = (bytes * 10 + kb / 2) / kb
+      "${tenths / 10}.${tenths % 10} KB"
+    }
+    bytes < gb -> {
+      val tenths = (bytes * 10 + mb / 2) / mb
+      "${tenths / 10}.${tenths % 10} MB"
+    }
+    else -> {
+      val hundredths = (bytes * 100 + gb / 2) / gb
+      "${hundredths / 100}.${(hundredths % 100).toString().padStart(2, '0')} GB"
+    }
   }
 }
