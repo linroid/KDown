@@ -56,3 +56,49 @@ jobs:
         with:
           name: android-test-reports
           path: '**/build/reports/tests/testDebugUnitTest/'
+
+  ios-tests:
+    name: iOS Tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run iOS simulator tests
+        run: ./gradlew iosSimulatorArm64Test
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-reports
+          path: '**/build/reports/tests/iosSimulatorArm64Test/'
+
+  wasmjs-tests:
+    name: WasmJs Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run WasmJs browser tests
+        run: ./gradlew wasmJsBrowserTest
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasmjs-test-reports
+          path: '**/build/reports/tests/wasmJsBrowserTest/'
