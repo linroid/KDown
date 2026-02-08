@@ -15,16 +15,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -121,10 +131,7 @@ fun App() {
       },
       floatingActionButton = {
         FloatingActionButton(onClick = { showAddDialog = true }) {
-          Text(
-            text = "+",
-            style = MaterialTheme.typography.headlineSmall
-          )
+          Icon(Icons.Filled.Add, contentDescription = "Add download")
         }
       }
     ) { paddingValues ->
@@ -565,26 +572,79 @@ private fun TaskActionButtons(
   ) {
     when (state) {
       is DownloadState.Pending -> {
-        OutlinedButton(onClick = onCancel) { Text("Cancel") }
+        IconButton(
+          onClick = onCancel,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Close, contentDescription = "Cancel")
+        }
       }
       is DownloadState.Downloading -> {
-        FilledTonalButton(onClick = onPause) { Text("Pause") }
-        OutlinedButton(onClick = onCancel) { Text("Cancel") }
+        FilledTonalIconButton(onClick = onPause) {
+          Icon(Icons.Filled.Pause, contentDescription = "Pause")
+        }
+        IconButton(
+          onClick = onCancel,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Close, contentDescription = "Cancel")
+        }
       }
       is DownloadState.Paused -> {
-        FilledTonalButton(onClick = onResume) { Text("Resume") }
-        TextButton(onClick = onRemove) { Text("Remove") }
+        FilledIconButton(onClick = onResume) {
+          Icon(
+            Icons.Filled.PlayArrow,
+            contentDescription = "Resume"
+          )
+        }
+        IconButton(
+          onClick = onRemove,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Delete, contentDescription = "Remove")
+        }
       }
       is DownloadState.Completed -> {
-        TextButton(onClick = onRemove) { Text("Remove") }
+        IconButton(
+          onClick = onRemove,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Delete, contentDescription = "Remove")
+        }
       }
       is DownloadState.Failed -> {
-        FilledTonalButton(onClick = onRetry) { Text("Retry") }
-        TextButton(onClick = onRemove) { Text("Remove") }
+        FilledTonalIconButton(onClick = onRetry) {
+          Icon(Icons.Filled.Refresh, contentDescription = "Retry")
+        }
+        IconButton(
+          onClick = onRemove,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Delete, contentDescription = "Remove")
+        }
       }
       is DownloadState.Canceled -> {
-        FilledTonalButton(onClick = onRetry) { Text("Retry") }
-        TextButton(onClick = onRemove) { Text("Remove") }
+        FilledTonalIconButton(onClick = onRetry) {
+          Icon(Icons.Filled.Refresh, contentDescription = "Retry")
+        }
+        IconButton(
+          onClick = onRemove,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Delete, contentDescription = "Remove")
+        }
       }
       is DownloadState.Idle -> {}
     }
