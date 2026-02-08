@@ -1,31 +1,48 @@
 package com.linroid.kdown.examples
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -35,6 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,10 +61,16 @@ import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.DownloadTask
 import com.linroid.kdown.KDown
 import com.linroid.kdown.KtorHttpEngine
+import com.linroid.kdown.Logger
+import com.linroid.kdown.error.KDownError
 import com.linroid.kdown.model.DownloadState
+import com.linroid.kdown.model.TaskRecord
+import com.linroid.kdown.model.TaskState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
   val config = remember {
@@ -57,458 +81,617 @@ fun App() {
       progressUpdateIntervalMs = 200
     )
   }
-  val kdown = remember { KDown(httpEngine = KtorHttpEngine(), config = config) }
+  val kdown = remember {
+    KDown(
+      httpEngine = KtorHttpEngine(),
+      config = config,
+      logger = Logger.console()
+    )
+  }
   val scope = rememberCoroutineScope()
-  val tasks = remember { mutableStateMapOf<String, DownloadTask>() }
-  val taskErrors = remember { mutableStateMapOf<String, String>() }
-  var customUrl by remember { mutableStateOf("") }
-  var customFileName by remember { mutableStateOf("kdown-custom.bin") }
+  val activeTasks = remember { mutableStateMapOf<String, DownloadTask>() }
+  var taskRecords by remember { mutableStateOf<List<TaskRecord>>(emptyList()) }
+  var showAddDialog by remember { mutableStateOf(false) }
+  var errorMessage by remember { mutableStateOf<String?>(null) }
 
   DisposableEffect(Unit) {
-    onDispose {
-      kdown.close()
-    }
+    onDispose { kdown.close() }
   }
 
-  val samples = remember {
-    listOf(
-      SampleFile(
-        id = "w3c-pdf",
-        title = "W3C Sample PDF",
-        description = "Small PDF hosted by W3C for testing downloads.",
-        url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        sizeHint = "13 KB"
-      ),
-      SampleFile(
-        id = "rfc-text",
-        title = "RFC 9110 (HTTP Semantics)",
-        description = "Plain-text RFC from the official RFC Editor.",
-        url = "https://www.rfc-editor.org/rfc/rfc9110.txt",
-        sizeHint = "1.6 MB"
-      ),
-      SampleFile(
-        id = "wikimedia-jpg",
-        title = "Wikimedia Example Image",
-        description = "Public domain example image from Wikimedia Commons.",
-        url = "https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg",
-        sizeHint = "9 KB"
-      )
-    )
+  LaunchedEffect(Unit) {
+    taskRecords = kdown.getAllTasks()
+      .sortedByDescending { it.createdAt }
+    val restored = kdown.restoreTasks()
+    restored.forEach { task -> activeTasks[task.taskId] = task }
   }
-  val publicExamples = remember {
-    listOf(
-      PublicExample(
-        title = "File Examples - Sample PDF (150 KB)",
-        url = "https://file-examples.com/storage/fe44f4f319f75cf86f0e8f6/2017/10/file-example_PDF_1MB.pdf",
-        suggestedName = "file-examples-1mb.pdf"
-      ),
-      PublicExample(
-        title = "File Examples - Sample JPG (100 KB)",
-        url = "https://file-examples.com/storage/fe44f4f319f75cf86f0e8f6/2017/10/file_example_JPG_100kB.jpg",
-        suggestedName = "file-examples-100kb.jpg"
-      ),
-      PublicExample(
-        title = "File Examples - Sample MP3 (1 MB)",
-        url = "https://file-examples.com/storage/fe44f4f319f75cf86f0e8f6/2017/11/file_example_MP3_1MG.mp3",
-        suggestedName = "file-examples-1mb.mp3"
-      )
-    )
+
+  suspend fun refreshRecords() {
+    taskRecords = kdown.getAllTasks()
+      .sortedByDescending { it.createdAt }
   }
 
   MaterialTheme {
-    Surface(
-      modifier = Modifier.fillMaxSize(),
-      color = MaterialTheme.colorScheme.background
-    ) {
-      Column(
-        modifier = Modifier
-          .verticalScroll(rememberScrollState())
-          .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-      ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Text(
-            text = "KDown Example Downloader",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold
-          )
-          Text(
-            text = "Version ${KDown.VERSION} • Beautiful, minimal UI for every platform.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-        }
-
-        Card(
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-          Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-          ) {
-            Text(
-              text = "Quick start",
-              style = MaterialTheme.typography.titleMedium,
-              fontWeight = FontWeight.SemiBold
-            )
-            Text(
-              text = "Pick a curated test file below (all hosted on public legal sites) " +
-                "or paste your own URL to validate pause/resume, retries, and progress.",
-              style = MaterialTheme.typography.bodyMedium
-            )
-            Row(
-              horizontalArrangement = Arrangement.spacedBy(12.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              OutlinedTextField(
-                value = customUrl,
-                onValueChange = { customUrl = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("Custom URL") },
-                singleLine = true,
-                placeholder = { Text("https://example.com/file.zip") }
+    Scaffold(
+      topBar = {
+        TopAppBar(
+          title = {
+            Column {
+              Text(
+                text = "KDown",
+                fontWeight = FontWeight.SemiBold
               )
-              OutlinedTextField(
-                value = customFileName,
-                onValueChange = { customFileName = it },
-                modifier = Modifier.width(180.dp),
-                label = { Text("Save as") },
-                singleLine = true
+              Text(
+                text = "v${KDown.VERSION} \u00b7 Downloader",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
               )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-              Button(
-                onClick = {
-                  val trimmed = customUrl.trim()
-                  if (trimmed.isNotEmpty()) {
-                    startDownload(
-                      scope = scope,
-                      kdown = kdown,
-                      tasks = tasks,
-                      taskErrors = taskErrors,
-                      entryId = "custom",
-                      url = trimmed,
-                      destPath = buildDestPath(customFileName.ifBlank { "kdown-custom.bin" })
-                    )
-                  }
-                }
-              ) {
-                Text("Download custom")
-              }
-              if (taskErrors["custom"] != null) {
-                Text(
-                  text = taskErrors["custom"] ?: "",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.error,
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis
-                )
-              }
             }
           }
+        )
+      },
+      floatingActionButton = {
+        FloatingActionButton(onClick = { showAddDialog = true }) {
+          Icon(Icons.Filled.Add, contentDescription = "Add download")
         }
-
-        Card(
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+      }
+    ) { paddingValues ->
+      if (taskRecords.isEmpty() && errorMessage == null) {
+        EmptyState(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+          onAddClick = { showAddDialog = true }
+        )
+      } else {
+        LazyColumn(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+          contentPadding = PaddingValues(16.dp),
+          verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-          Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-          ) {
-            Text(
-              text = "Public file examples",
-              style = MaterialTheme.typography.titleMedium,
-              fontWeight = FontWeight.SemiBold
-            )
-            Text(
-              text = "Select a public test file (e.g. File Examples) to prefill the custom downloader.",
-              style = MaterialTheme.typography.bodyMedium
-            )
-            publicExamples.forEach { example ->
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+          if (errorMessage != null) {
+            item(key = "error-banner") {
+              Card(
+                colors = CardDefaults.cardColors(
+                  containerColor =
+                    MaterialTheme.colorScheme.errorContainer
+                ),
+                modifier = Modifier.fillMaxWidth()
               ) {
-                Text(
-                  text = example.title,
-                  style = MaterialTheme.typography.bodyMedium,
-                  modifier = Modifier.weight(1f),
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                FilledTonalButton(
-                  onClick = {
-                    customUrl = example.url
-                    customFileName = example.suggestedName
-                  }
+                Row(
+                  modifier = Modifier.padding(16.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                  Text("Use")
+                  Text(
+                    text = errorMessage ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color =
+                      MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.weight(1f)
+                  )
+                  TextButton(
+                    onClick = { errorMessage = null }
+                  ) {
+                    Text("Dismiss")
+                  }
                 }
               }
             }
           }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-          Text(
-            text = "Test files",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-          )
-          samples.forEach { sample ->
-            val task = tasks[sample.id]
-            val state = task?.state?.collectAsState(DownloadState.Idle)?.value ?: DownloadState.Idle
-            SampleCard(
-              sample = sample,
-              state = state,
-              errorMessage = taskErrors[sample.id],
-              onDownload = {
-                startDownload(
-                  scope = scope,
-                  kdown = kdown,
-                  tasks = tasks,
-                  taskErrors = taskErrors,
-                  entryId = sample.id,
-                  url = sample.url,
-                  destPath = buildDestPath(sample.fileName)
-                )
-              },
+          items(
+            items = taskRecords,
+            key = { it.taskId }
+          ) { record ->
+            DownloadTaskItem(
+              record = record,
+              activeTask = activeTasks[record.taskId],
               onPause = {
                 scope.launch {
-                  task?.pause()
+                  activeTasks[record.taskId]?.pause()
+                  refreshRecords()
                 }
               },
               onResume = {
                 scope.launch {
+                  val task = activeTasks[record.taskId]
                   val resumed = task?.resume()
                   if (resumed != null) {
-                    tasks[sample.id] = resumed
+                    activeTasks[record.taskId] = resumed
                   }
+                  refreshRecords()
                 }
               },
               onCancel = {
                 scope.launch {
-                  task?.cancel()
+                  activeTasks[record.taskId]?.cancel()
+                  activeTasks.remove(record.taskId)
+                  refreshRecords()
+                }
+              },
+              onRetry = {
+                scope.launch {
+                  activeTasks.remove(record.taskId)
+                  kdown.removeTask(record.taskId)
+                  val request = DownloadRequest(
+                    url = record.url,
+                    destPath = record.destPath,
+                    connections = record.connections,
+                    headers = record.headers
+                  )
+                  val task = kdown.download(request)
+                  activeTasks[task.taskId] = task
+                  refreshRecords()
+                }
+              },
+              onRemove = {
+                scope.launch {
+                  activeTasks[record.taskId]?.cancel()
+                  activeTasks.remove(record.taskId)
+                  kdown.removeTask(record.taskId)
+                  refreshRecords()
                 }
               }
             )
           }
         }
+      }
+    }
 
-        Divider()
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text(
-            text = "Tips",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-          )
-          Text(
-            text = "Pause an active download to confirm range requests. " +
-              "If the server does not support ranged downloads, KDown will fall back automatically.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-          Text(
-            text = "On web/Wasm builds, file system access is limited, so downloads may show as unsupported.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+    if (showAddDialog) {
+      AddDownloadDialog(
+        onDismiss = { showAddDialog = false },
+        onDownload = { url, fileName ->
+          showAddDialog = false
+          errorMessage = null
+          startDownload(
+            scope = scope,
+            kdown = kdown,
+            activeTasks = activeTasks,
+            url = url,
+            destPath = buildDestPath(fileName),
+            onRefresh = { scope.launch { refreshRecords() } },
+            onError = { errorMessage = it }
           )
         }
+      )
+    }
+  }
+}
+
+@Composable
+private fun EmptyState(
+  modifier: Modifier = Modifier,
+  onAddClick: () -> Unit
+) {
+  Box(
+    modifier = modifier,
+    contentAlignment = Alignment.Center
+  ) {
+    Column(
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+      Text(
+        text = "No downloads yet",
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface
+      )
+      Text(
+        text = "Add a URL to start downloading",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
+      Spacer(modifier = Modifier.height(8.dp))
+      Button(onClick = onAddClick) {
+        Text("Add download")
       }
     }
   }
 }
 
 @Composable
-private fun SampleCard(
-  sample: SampleFile,
-  state: DownloadState,
-  errorMessage: String?,
-  onDownload: () -> Unit,
+private fun AddDownloadDialog(
+  onDismiss: () -> Unit,
+  onDownload: (url: String, fileName: String) -> Unit
+) {
+  var url by remember { mutableStateOf("") }
+  var fileName by remember { mutableStateOf("") }
+  val isValidUrl = url.isBlank() ||
+    url.trim().startsWith("http://") ||
+    url.trim().startsWith("https://")
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Add download") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+          value = url,
+          onValueChange = {
+            url = it
+            fileName = extractFilename(it)
+          },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("URL") },
+          singleLine = true,
+          placeholder = {
+            Text("https://example.com/file.zip")
+          },
+          isError = !isValidUrl,
+          supportingText = if (!isValidUrl) {
+            { Text("URL must start with http:// or https://") }
+          } else {
+            null
+          }
+        )
+        OutlinedTextField(
+          value = fileName,
+          onValueChange = { fileName = it },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("Save as") },
+          singleLine = true,
+          placeholder = { Text("Auto-detected from URL") },
+          supportingText = if (fileName.isBlank() && url.isNotBlank()) {
+            { Text("Will be extracted from URL") }
+          } else {
+            null
+          }
+        )
+      }
+    },
+    confirmButton = {
+      Button(
+        onClick = {
+          val trimmed = url.trim()
+          if (trimmed.isNotEmpty()) {
+            val name = fileName.ifBlank {
+              extractFilename(trimmed)
+                .ifBlank { "download.bin" }
+            }
+            onDownload(trimmed, name)
+          }
+        },
+        enabled = url.isNotBlank() && isValidUrl
+      ) {
+        Text("Download")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("Cancel")
+      }
+    }
+  )
+}
+
+@Composable
+private fun DownloadTaskItem(
+  record: TaskRecord,
+  activeTask: DownloadTask?,
   onPause: () -> Unit,
   onResume: () -> Unit,
-  onCancel: () -> Unit
+  onCancel: () -> Unit,
+  onRetry: () -> Unit,
+  onRemove: () -> Unit
 ) {
-  val isDownloading = state is DownloadState.Downloading || state is DownloadState.Pending
-  val isPaused = state is DownloadState.Paused
-  val canDownload = state is DownloadState.Idle || state.isTerminal
+  val liveState = activeTask?.state
+    ?.collectAsState(DownloadState.Idle)?.value
+  val displayState = liveState ?: recordToDisplayState(record)
+  val fileName = record.destPath.name
+  val isDownloading = displayState is DownloadState.Downloading ||
+    displayState is DownloadState.Pending
+  val isPaused = displayState is DownloadState.Paused
 
   Card(
     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    modifier = Modifier.fillMaxWidth()
+    modifier = Modifier
+      .fillMaxWidth()
+      .then(
+        if (isDownloading || isPaused) {
+          Modifier.clickable {
+            if (isDownloading) onPause() else onResume()
+          }
+        } else {
+          Modifier
+        }
+      )
   ) {
     Column(
-      modifier = Modifier.padding(18.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp)
+      modifier = Modifier.padding(16.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
       Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
       ) {
-        Box(
-          modifier = Modifier
-            .size(44.dp)
-            .padding(8.dp),
-          contentAlignment = Alignment.Center
-        ) {
-          Text(
-            text = sample.title.firstOrNull()?.uppercase() ?: "D",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-          )
-        }
+        StatusIndicator(displayState)
         Column(modifier = Modifier.weight(1f)) {
           Text(
-            text = sample.title,
+            text = fileName,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
           )
           Text(
-            text = "${sample.description} • ${sample.sizeHint}",
+            text = record.url,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
           )
         }
       }
 
-      Text(
-        text = sample.url,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.primary,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
-      )
-
-      when (state) {
+      when (displayState) {
         is DownloadState.Downloading -> {
-          val progress = state.progress
-          val percent = (progress.percent * 100).coerceIn(0f, 100f)
-          Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            LinearProgressIndicator(progress = { progress.percent })
-            Text(
-              text = "${percent.toInt()}% • " +
-                "${formatBytes(progress.downloadedBytes)} / ${formatBytes(progress.totalBytes)}" +
-                progress.bytesPerSecond.takeIf { it > 0 }?.let { " • ${formatBytes(it)}/s" }.orEmpty(),
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          }
+          val progress = displayState.progress
+          val pct = (progress.percent * 100).coerceIn(0f, 100f)
+          LinearProgressIndicator(
+            progress = { progress.percent },
+            modifier = Modifier.fillMaxWidth()
+          )
+          Text(
+            text = buildString {
+              append("${pct.toInt()}%")
+              append(" \u00b7 ${formatBytes(progress.downloadedBytes)}")
+              append(" / ${formatBytes(progress.totalBytes)}")
+              if (progress.bytesPerSecond > 0) {
+                append(" \u00b7 ${formatBytes(progress.bytesPerSecond)}/s")
+              }
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
         }
         is DownloadState.Pending -> {
-          LinearProgressIndicator()
+          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
           Text(
-            text = "Preparing download…",
+            text = "Preparing download\u2026",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
         is DownloadState.Paused -> {
-          Text(
-            text = "Paused. Ready to resume.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
+          if (record.totalBytes > 0) {
+            val pausedPct = if (record.totalBytes > 0) {
+              (record.downloadedBytes * 100 / record.totalBytes)
+            } else {
+              0L
+            }
+            LinearProgressIndicator(
+              progress = {
+                record.downloadedBytes.toFloat() / record.totalBytes
+              },
+              modifier = Modifier.fillMaxWidth(),
+              trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+            Text(
+              text = "Paused \u00b7 $pausedPct% \u00b7 " +
+                "${formatBytes(record.downloadedBytes)} / " +
+                formatBytes(record.totalBytes),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          } else {
+            Text(
+              text = "Paused",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
         }
         is DownloadState.Completed -> {
           Text(
-            text = "Completed • Saved to ${state.filePath}",
+            text = "Download complete",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.tertiary
           )
         }
         is DownloadState.Failed -> {
           Text(
-            text = "Failed • ${state.error.message}",
+            text = "Failed: ${displayState.error.message}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
           )
         }
         is DownloadState.Canceled -> {
           Text(
-            text = "Canceled by user.",
+            text = "Canceled",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
         is DownloadState.Idle -> {
           Text(
-            text = "Ready to download.",
+            text = "Waiting",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
       }
 
-      if (!errorMessage.isNullOrBlank()) {
-        Text(
-          text = errorMessage,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.error
-        )
-      }
-
-      Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        FilledTonalButton(
-          onClick = onDownload,
-          enabled = canDownload
-        ) {
-          Text(if (state is DownloadState.Completed) "Download again" else "Download")
-        }
-        OutlinedButton(
-          onClick = if (isPaused) onResume else onPause,
-          enabled = isPaused || isDownloading
-        ) {
-          Text(if (isPaused) "Resume" else "Pause")
-        }
-        TextButton(
-          onClick = onCancel,
-          enabled = isDownloading || isPaused
-        ) {
-          Text("Cancel")
-        }
-      }
+      TaskActionButtons(
+        state = displayState,
+        onPause = onPause,
+        onResume = onResume,
+        onCancel = onCancel,
+        onRetry = onRetry,
+        onRemove = onRemove
+      )
     }
   }
 }
 
-private data class SampleFile(
-  val id: String,
-  val title: String,
-  val description: String,
-  val url: String,
-  val sizeHint: String
-) {
-  val fileName: String
-    get() = url.substringAfterLast("/").ifBlank { "kdown-sample.bin" }
+@Composable
+private fun StatusIndicator(state: DownloadState) {
+  val bgColor = when (state) {
+    is DownloadState.Downloading,
+    is DownloadState.Pending -> MaterialTheme.colorScheme.primaryContainer
+    is DownloadState.Completed -> MaterialTheme.colorScheme.tertiaryContainer
+    is DownloadState.Failed -> MaterialTheme.colorScheme.errorContainer
+    is DownloadState.Paused -> MaterialTheme.colorScheme.secondaryContainer
+    else -> MaterialTheme.colorScheme.surfaceVariant
+  }
+  val fgColor = when (state) {
+    is DownloadState.Downloading,
+    is DownloadState.Pending -> MaterialTheme.colorScheme.onPrimaryContainer
+    is DownloadState.Completed -> MaterialTheme.colorScheme.onTertiaryContainer
+    is DownloadState.Failed -> MaterialTheme.colorScheme.onErrorContainer
+    is DownloadState.Paused -> MaterialTheme.colorScheme.onSecondaryContainer
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+  }
+  val label = when (state) {
+    is DownloadState.Idle -> "--"
+    is DownloadState.Pending -> ".."
+    is DownloadState.Downloading -> "DL"
+    is DownloadState.Paused -> "||"
+    is DownloadState.Completed -> "OK"
+    is DownloadState.Failed -> "!!"
+    is DownloadState.Canceled -> "X"
+  }
+  Box(
+    modifier = Modifier
+      .size(40.dp)
+      .clip(CircleShape)
+      .background(bgColor),
+    contentAlignment = Alignment.Center
+  ) {
+    Text(
+      text = label,
+      style = MaterialTheme.typography.labelMedium,
+      fontWeight = FontWeight.Bold,
+      color = fgColor
+    )
+  }
 }
 
-private data class PublicExample(
-  val title: String,
-  val url: String,
-  val suggestedName: String
-)
+@Composable
+private fun TaskActionButtons(
+  state: DownloadState,
+  onPause: () -> Unit,
+  onResume: () -> Unit,
+  onCancel: () -> Unit,
+  onRetry: () -> Unit,
+  onRemove: () -> Unit
+) {
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    when (state) {
+      is DownloadState.Downloading,
+      is DownloadState.Pending -> {
+        FilledTonalIconButton(onClick = onPause) {
+          Icon(Icons.Filled.Pause, contentDescription = "Pause")
+        }
+        IconButton(
+          onClick = onCancel,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Close, contentDescription = "Cancel")
+        }
+      }
+      is DownloadState.Paused -> {
+        FilledTonalIconButton(onClick = onResume) {
+          Icon(
+            Icons.Filled.PlayArrow,
+            contentDescription = "Resume"
+          )
+        }
+        IconButton(
+          onClick = onCancel,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Close, contentDescription = "Cancel")
+        }
+        IconButton(
+          onClick = onRemove,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Delete, contentDescription = "Remove")
+        }
+      }
+      is DownloadState.Completed -> {
+        IconButton(
+          onClick = onRemove,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Delete, contentDescription = "Remove")
+        }
+      }
+      is DownloadState.Failed,
+      is DownloadState.Canceled -> {
+        FilledTonalIconButton(onClick = onRetry) {
+          Icon(Icons.Filled.Refresh, contentDescription = "Retry")
+        }
+        IconButton(
+          onClick = onRemove,
+          colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          )
+        ) {
+          Icon(Icons.Filled.Delete, contentDescription = "Remove")
+        }
+      }
+      is DownloadState.Idle -> {}
+    }
+  }
+}
+
+private fun recordToDisplayState(record: TaskRecord): DownloadState {
+  return when (record.state) {
+    TaskState.PENDING -> DownloadState.Pending
+    TaskState.DOWNLOADING -> DownloadState.Pending
+    TaskState.PAUSED -> DownloadState.Paused
+    TaskState.COMPLETED -> DownloadState.Completed(record.destPath)
+    TaskState.FAILED -> DownloadState.Failed(
+      KDownError.Unknown(
+        cause = Exception(
+          record.errorMessage ?: "Unknown error"
+        )
+      )
+    )
+    TaskState.CANCELED -> DownloadState.Canceled
+  }
+}
+
+private fun extractFilename(url: String): String {
+  val path = url.trim()
+    .substringBefore("?")
+    .substringBefore("#")
+    .trimEnd('/')
+    .substringAfterLast("/")
+  return path.ifBlank { "" }
+}
 
 private fun buildDestPath(fileName: String): Path {
-  val safeName = fileName.ifBlank { "kdown-download.bin" }
+  val safeName = fileName.ifBlank { "download.bin" }
   return Path("downloads/$safeName")
 }
 
 private fun startDownload(
-  scope: kotlinx.coroutines.CoroutineScope,
+  scope: CoroutineScope,
   kdown: KDown,
-  tasks: MutableMap<String, DownloadTask>,
-  taskErrors: MutableMap<String, String>,
-  entryId: String,
+  activeTasks: MutableMap<String, DownloadTask>,
   url: String,
-  destPath: Path
+  destPath: Path,
+  onRefresh: () -> Unit,
+  onError: (String) -> Unit = {}
 ) {
-  taskErrors.remove(entryId)
   scope.launch {
     runCatching {
       val request = DownloadRequest(
@@ -518,9 +701,11 @@ private fun startDownload(
       )
       kdown.download(request)
     }.onSuccess { task ->
-      tasks[entryId] = task
-    }.onFailure { error ->
-      taskErrors[entryId] = error.message ?: "Unable to start download."
+      activeTasks[task.taskId] = task
+      onRefresh()
+    }.onFailure { e ->
+      onError(e.message ?: "Failed to start download")
+      onRefresh()
     }
   }
 }
@@ -542,7 +727,8 @@ private fun formatBytes(bytes: Long): String {
     }
     else -> {
       val hundredths = (bytes * 100 + gb / 2) / gb
-      "${hundredths / 100}.${(hundredths % 100).toString().padStart(2, '0')} GB"
+      "${hundredths / 100}.${(hundredths % 100)
+        .toString().padStart(2, '0')} GB"
     }
   }
 }
