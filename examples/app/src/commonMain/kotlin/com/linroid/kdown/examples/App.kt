@@ -20,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -515,6 +517,8 @@ private fun DownloadTaskItem(
 
       TaskActionButtons(
         state = displayState,
+        onPause = onPause,
+        onResume = onResume,
         onCancel = onCancel,
         onRetry = onRetry,
         onRemove = onRemove
@@ -569,6 +573,8 @@ private fun StatusIndicator(state: DownloadState) {
 @Composable
 private fun TaskActionButtons(
   state: DownloadState,
+  onPause: () -> Unit,
+  onResume: () -> Unit,
   onCancel: () -> Unit,
   onRetry: () -> Unit,
   onRemove: () -> Unit
@@ -580,6 +586,9 @@ private fun TaskActionButtons(
     when (state) {
       is DownloadState.Downloading,
       is DownloadState.Pending -> {
+        FilledTonalIconButton(onClick = onPause) {
+          Icon(Icons.Filled.Pause, contentDescription = "Pause")
+        }
         IconButton(
           onClick = onCancel,
           colors = IconButtonDefaults.iconButtonColors(
@@ -590,6 +599,12 @@ private fun TaskActionButtons(
         }
       }
       is DownloadState.Paused -> {
+        FilledTonalIconButton(onClick = onResume) {
+          Icon(
+            Icons.Filled.PlayArrow,
+            contentDescription = "Resume"
+          )
+        }
         IconButton(
           onClick = onCancel,
           colors = IconButtonDefaults.iconButtonColors(
