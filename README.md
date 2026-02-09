@@ -49,15 +49,16 @@ Key internal components:
 | `SegmentDownloader` | Downloads a single byte-range segment |
 | `RangeSupportDetector` | Probes server for Range/ETag/content-length |
 | `FileAccessor` | expect/actual abstraction for random-access file writes |
-| `JsonMetadataStore` | File-based metadata persistence (kotlinx-io) |
+| `SqliteTaskStore` | SQLite-backed task record persistence (includes segments) |
 
 ## Quick Start
 
 ```kotlin
 // 1. Create a KDown instance
+val taskStore = createSqliteTaskStore(driverFactory)
 val kdown = KDown(
   httpEngine = KtorHttpEngine(),
-  metadataStore = JsonMetadataStore(metadataDir),
+  taskStore = taskStore,
   config = DownloadConfig(
     maxConnections = 4,
     retryCount = 3,
@@ -91,11 +92,17 @@ launch {
 
 // 4. Pause / Resume / Cancel
 task.pause()
-val resumed = kdown.resume(task.taskId)
+task.resume()
 task.cancel()
 
 // 5. Or just await the result
-val result = task.await() // Result<String>
+val result = task.await() // Result<Path>
+
+// 6. Observe all tasks (includes persisted tasks after loadTasks())
+kdown.loadTasks()
+kdown.tasks.collect { tasks ->
+  tasks.forEach { println("${it.taskId}: ${it.state.value}") }
+}
 ```
 
 ## Logging
@@ -214,7 +221,7 @@ All errors are modeled as a sealed class `KDownError`:
 1. **Probe** -- HEAD request to get `Content-Length`, `Accept-Ranges`, `ETag`, `Last-Modified`
 2. **Plan** -- If ranges are supported, split the file into N segments; otherwise fall back to a single connection
 3. **Download** -- Each segment downloads its byte range concurrently and writes to the correct file offset
-4. **Persist** -- Segment progress is saved to `MetadataStore` so pause/resume works across restarts
+4. **Persist** -- Segment progress is saved to `TaskStore` so pause/resume works across restarts
 5. **Resume** -- On resume, validates server identity (ETag/Last-Modified), then continues from last offsets
 
 ## Current Limitations

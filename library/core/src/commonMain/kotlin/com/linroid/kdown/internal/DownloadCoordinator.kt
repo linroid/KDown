@@ -6,33 +6,31 @@ import com.linroid.kdown.FileAccessor
 import com.linroid.kdown.FileNameResolver
 import com.linroid.kdown.HttpEngine
 import com.linroid.kdown.KDownLogger
-import com.linroid.kdown.MetadataStore
 import com.linroid.kdown.TaskStore
 import com.linroid.kdown.error.KDownError
-import com.linroid.kdown.model.DownloadMetadata
 import com.linroid.kdown.model.DownloadProgress
 import com.linroid.kdown.model.DownloadState
+import com.linroid.kdown.model.Segment
 import com.linroid.kdown.model.TaskRecord
 import kotlinx.io.files.SystemFileSystem
 import com.linroid.kdown.model.TaskState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 
 internal class DownloadCoordinator(
   private val httpEngine: HttpEngine,
-  private val metadataStore: MetadataStore,
   private val taskStore: TaskStore,
   private val config: DownloadConfig,
   private val fileAccessorFactory: (Path) -> FileAccessor,
@@ -44,18 +42,20 @@ internal class DownloadCoordinator(
   private class ActiveDownload(
     val job: Job,
     val stateFlow: MutableStateFlow<DownloadState>,
-    var metadata: DownloadMetadata?,
+    val segmentsFlow: MutableStateFlow<List<Segment>>,
+    var segments: List<Segment>?,
     var fileAccessor: FileAccessor?,
-    var segmentProgress: MutableList<Long>? = null
+    var segmentProgress: MutableList<Long>? = null,
+    var totalBytes: Long = 0
   )
 
   suspend fun start(
     taskId: String,
     request: DownloadRequest,
-    scope: CoroutineScope
-  ): StateFlow<DownloadState> {
-    val stateFlow = MutableStateFlow<DownloadState>(DownloadState.Pending)
-
+    scope: CoroutineScope,
+    stateFlow: MutableStateFlow<DownloadState>,
+    segmentsFlow: MutableStateFlow<List<Segment>>
+  ) {
     val initialDestPath = request.fileName?.let {
       Path(request.directory, it)
     } ?: request.directory
@@ -64,10 +64,8 @@ internal class DownloadCoordinator(
     taskStore.save(
       TaskRecord(
         taskId = taskId,
-        url = request.url,
+        request = request,
         destPath = initialDestPath,
-        connections = request.connections,
-        headers = request.headers,
         state = TaskState.PENDING,
         createdAt = now,
         updatedAt = now
@@ -76,13 +74,14 @@ internal class DownloadCoordinator(
 
     val job = scope.launch {
       try {
-        executeDownload(taskId, request, stateFlow)
+        executeDownload(taskId, request, stateFlow, segmentsFlow)
       } catch (e: CancellationException) {
         if (stateFlow.value !is DownloadState.Paused) {
           stateFlow.value = DownloadState.Canceled
         }
         throw e
       } catch (e: Exception) {
+        if (e is CancellationException) throw e
         val error = when (e) {
           is KDownError -> e
           else -> KDownError.Unknown(e)
@@ -96,18 +95,18 @@ internal class DownloadCoordinator(
       activeDownloads[taskId] = ActiveDownload(
         job = job,
         stateFlow = stateFlow,
-        metadata = null,
+        segmentsFlow = segmentsFlow,
+        segments = null,
         fileAccessor = null
       )
     }
-
-    return stateFlow.asStateFlow()
   }
 
   private suspend fun executeDownload(
     taskId: String,
     request: DownloadRequest,
-    stateFlow: MutableStateFlow<DownloadState>
+    stateFlow: MutableStateFlow<DownloadState>,
+    segmentsFlow: MutableStateFlow<List<Segment>>
   ) {
     KDownLogger.d("Coordinator") {
       "Detecting server capabilities for ${request.url}"
@@ -120,10 +119,6 @@ internal class DownloadCoordinator(
 
     val fileName = fileNameResolver.resolve(request, serverInfo)
     val destPath = deduplicatePath(request.directory, fileName)
-
-    updateTaskRecord(taskId) {
-      it.copy(destPath = destPath, updatedAt = currentTimeMillis())
-    }
 
     val segments = if (serverInfo.supportsResume && request.connections > 1) {
       KDownLogger.i("Coordinator") {
@@ -139,36 +134,30 @@ internal class DownloadCoordinator(
       SegmentCalculator.singleSegment(totalBytes)
     }
 
+    segmentsFlow.value = segments
+
     val now = currentTimeMillis()
-    val metadata = DownloadMetadata(
-      taskId = taskId,
-      url = request.url,
-      destPath = destPath,
-      totalBytes = totalBytes,
-      acceptRanges = serverInfo.acceptRanges,
-      etag = serverInfo.etag,
-      lastModified = serverInfo.lastModified,
-      segments = segments,
-      headers = request.headers,
-      createdAt = now,
-      updatedAt = now
-    )
+    updateTaskRecord(taskId) {
+      it.copy(
+        destPath = destPath,
+        state = TaskState.DOWNLOADING,
+        totalBytes = totalBytes,
+        acceptRanges = serverInfo.acceptRanges,
+        etag = serverInfo.etag,
+        lastModified = serverInfo.lastModified,
+        segments = segments,
+        updatedAt = now
+      )
+    }
 
     val fileAccessor = fileAccessorFactory(destPath)
 
     mutex.withLock {
       activeDownloads[taskId]?.let {
-        it.metadata = metadata
+        it.segments = segments
         it.fileAccessor = fileAccessor
+        it.totalBytes = totalBytes
       }
-    }
-
-    updateTaskRecord(taskId) {
-      it.copy(
-        state = TaskState.DOWNLOADING,
-        totalBytes = totalBytes,
-        updatedAt = now
-      )
     }
 
     try {
@@ -176,20 +165,22 @@ internal class DownloadCoordinator(
         "Preallocating $totalBytes bytes for taskId=$taskId"
       }
       fileAccessor.preallocate(totalBytes)
-      KDownLogger.d("Coordinator") {
-        "Saving metadata for taskId=$taskId"
-      }
-      metadataStore.save(taskId, metadata)
 
-      downloadWithRetry(taskId, metadata, fileAccessor, stateFlow)
+      val taskRecord = taskStore.load(taskId)
+        ?: throw KDownError.Unknown(
+          IllegalStateException("TaskRecord not found for $taskId")
+        )
+      downloadWithRetry(
+        taskId, taskRecord, segments, fileAccessor, stateFlow, segmentsFlow
+      )
 
       fileAccessor.flush()
-      metadataStore.clear(taskId)
 
       updateTaskRecord(taskId) {
         it.copy(
           state = TaskState.COMPLETED,
           downloadedBytes = totalBytes,
+          segments = null,
           updatedAt = currentTimeMillis()
         )
       }
@@ -200,24 +191,30 @@ internal class DownloadCoordinator(
       stateFlow.value = DownloadState.Completed(destPath)
     } finally {
       fileAccessor.close()
-      mutex.withLock {
-        activeDownloads.remove(taskId)
+      withContext(NonCancellable) {
+        mutex.withLock {
+          activeDownloads.remove(taskId)
+        }
       }
     }
   }
 
   private suspend fun downloadWithRetry(
     taskId: String,
-    initialMetadata: DownloadMetadata,
+    taskRecord: TaskRecord,
+    initialSegments: List<Segment>,
     fileAccessor: FileAccessor,
-    stateFlow: MutableStateFlow<DownloadState>
+    stateFlow: MutableStateFlow<DownloadState>,
+    segmentsFlow: MutableStateFlow<List<Segment>>
   ) {
-    var metadata = initialMetadata
+    var segments = initialSegments
     var retryCount = 0
 
     while (true) {
       try {
-        downloadSegments(taskId, metadata, fileAccessor, stateFlow)
+        downloadSegments(
+          taskId, taskRecord, segments, fileAccessor, stateFlow, segmentsFlow
+        )
         return
       } catch (e: CancellationException) {
         throw e
@@ -242,19 +239,22 @@ internal class DownloadCoordinator(
         }
         delay(delayMs)
 
-        metadata = metadataStore.load(taskId) ?: metadata
+        segments = taskStore.load(taskId)?.segments ?: segments
       }
     }
   }
 
   private suspend fun downloadSegments(
     taskId: String,
-    metadata: DownloadMetadata,
+    taskRecord: TaskRecord,
+    segments: List<Segment>,
     fileAccessor: FileAccessor,
-    stateFlow: MutableStateFlow<DownloadState>
-  ): DownloadMetadata {
+    stateFlow: MutableStateFlow<DownloadState>,
+    segmentsFlow: MutableStateFlow<List<Segment>>
+  ) {
+    val totalBytes = taskRecord.totalBytes
     val segmentProgress =
-      metadata.segments.map { it.downloadedBytes }.toMutableList()
+      segments.map { it.downloadedBytes }.toMutableList()
     val segmentMutex = Mutex()
 
     mutex.withLock {
@@ -264,69 +264,105 @@ internal class DownloadCoordinator(
     var lastProgressUpdate = currentTimeMillis()
     val progressMutex = Mutex()
 
+    val incompleteSegments = segments.filter { !it.isComplete }
+    val updatedSegments = segments.toMutableList()
+
+    suspend fun currentSegments(): List<Segment> {
+      return segmentMutex.withLock {
+        updatedSegments.mapIndexed { i, seg ->
+          seg.copy(downloadedBytes = segmentProgress[i])
+        }
+      }
+    }
+
     suspend fun updateProgress() {
       val now = currentTimeMillis()
       progressMutex.withLock {
         if (now - lastProgressUpdate >= config.progressUpdateIntervalMs) {
-          val downloaded =
-            segmentMutex.withLock { segmentProgress.sum() }
+          val snapshot = currentSegments()
+          val downloaded = snapshot.sumOf { it.downloadedBytes }
           stateFlow.value = DownloadState.Downloading(
             DownloadProgress(
               downloadedBytes = downloaded,
-              totalBytes = metadata.totalBytes
+              totalBytes = totalBytes
             )
           )
+          segmentsFlow.value = snapshot
           lastProgressUpdate = now
         }
       }
     }
 
+    val downloadedBytes = segments.sumOf { it.downloadedBytes }
     stateFlow.value = DownloadState.Downloading(
       DownloadProgress(
-        downloadedBytes = metadata.downloadedBytes,
-        totalBytes = metadata.totalBytes
+        downloadedBytes = downloadedBytes,
+        totalBytes = totalBytes
       )
     )
+    segmentsFlow.value = segments
 
-    val incompleteSegments = metadata.segments.filter { !it.isComplete }
+    suspend fun saveSegments() {
+      val snapshot = currentSegments()
+      updateTaskRecord(taskId) {
+        it.copy(
+          segments = snapshot,
+          downloadedBytes = snapshot.sumOf { s -> s.downloadedBytes },
+          updatedAt = currentTimeMillis()
+        )
+      }
+    }
 
     coroutineScope {
-      val results = incompleteSegments.map { segment ->
-        async {
-          val downloader = SegmentDownloader(httpEngine, fileAccessor)
-          downloader.download(
-            metadata.url, segment, metadata.headers
-          ) { bytesDownloaded ->
-            segmentMutex.withLock {
-              segmentProgress[segment.index] = bytesDownloaded
-            }
-            updateProgress()
+      val flushJob = launch {
+        while (true) {
+          delay(config.segmentSaveIntervalMs)
+          saveSegments()
+          KDownLogger.v("Coordinator") {
+            "Periodic segment save for taskId=$taskId"
           }
         }
       }
 
-      val completedSegments = results.awaitAll()
+      try {
+        val results = incompleteSegments.map { segment ->
+          async {
+            val downloader = SegmentDownloader(httpEngine, fileAccessor)
+            val completed = downloader.download(
+              taskRecord.request.url, segment, taskRecord.request.headers
+            ) { bytesDownloaded ->
+              segmentMutex.withLock {
+                segmentProgress[segment.index] = bytesDownloaded
+              }
+              updateProgress()
+            }
+            segmentMutex.withLock {
+              updatedSegments[completed.index] = completed
+            }
+            saveSegments()
+            KDownLogger.d("Coordinator") {
+              "Segment ${completed.index} completed for taskId=$taskId"
+            }
+            completed
+          }
+        }
 
-      val updatedSegments = metadata.segments.toMutableList()
-      for (completed in completedSegments) {
-        updatedSegments[completed.index] = completed
+        results.awaitAll()
+      } finally {
+        flushJob.cancel()
       }
 
-      val updatedMetadata = metadata.copy(
-        segments = updatedSegments,
-        updatedAt = currentTimeMillis()
-      )
-      metadataStore.save(taskId, updatedMetadata)
+      saveSegments()
     }
 
+    val finalSegments = currentSegments()
+    segmentsFlow.value = finalSegments
     stateFlow.value = DownloadState.Downloading(
       DownloadProgress(
-        downloadedBytes = metadata.totalBytes,
-        totalBytes = metadata.totalBytes
+        downloadedBytes = totalBytes,
+        totalBytes = totalBytes
       )
     )
-
-    return metadataStore.load(taskId) ?: metadata
   }
 
   suspend fun pause(taskId: String) {
@@ -337,26 +373,26 @@ internal class DownloadCoordinator(
       }
       active.job.cancel()
 
-      active.metadata?.let { metadata ->
+      active.segments?.let { segments ->
         KDownLogger.d("Coordinator") {
           "Saving pause state for taskId=$taskId"
         }
         val now = currentTimeMillis()
         val progress = active.segmentProgress
-        val updatedMetadata = if (progress != null) {
-          val updatedSegments = metadata.segments.mapIndexed { i, seg ->
+        val updatedSegments = if (progress != null) {
+          segments.mapIndexed { i, seg ->
             seg.copy(downloadedBytes = progress[i])
           }
-          metadata.copy(segments = updatedSegments, updatedAt = now)
         } else {
-          metadata.copy(updatedAt = now)
+          segments
         }
-        metadataStore.save(taskId, updatedMetadata)
 
+        val downloadedBytes = updatedSegments.sumOf { it.downloadedBytes }
         updateTaskRecord(taskId) {
           it.copy(
             state = TaskState.PAUSED,
-            downloadedBytes = updatedMetadata.downloadedBytes,
+            downloadedBytes = downloadedBytes,
+            segments = updatedSegments,
             updatedAt = now
           )
         }
@@ -369,18 +405,34 @@ internal class DownloadCoordinator(
         }
       }
 
-      active.stateFlow.value = DownloadState.Paused
+      val pausedDownloaded = active.segments?.let { segs ->
+        val prog = active.segmentProgress
+        if (prog != null) {
+          segs.mapIndexed { i, seg ->
+            seg.copy(downloadedBytes = prog[i])
+          }.sumOf { it.downloadedBytes }
+        } else {
+          segs.sumOf { it.downloadedBytes }
+        }
+      } ?: 0L
+      active.stateFlow.value = DownloadState.Paused(
+        DownloadProgress(pausedDownloaded, active.totalBytes)
+      )
       activeDownloads.remove(taskId)
     }
   }
 
   suspend fun resume(
     taskId: String,
-    scope: CoroutineScope
-  ): StateFlow<DownloadState>? {
-    val metadata = metadataStore.load(taskId) ?: return null
+    scope: CoroutineScope,
+    stateFlow: MutableStateFlow<DownloadState>,
+    segmentsFlow: MutableStateFlow<List<Segment>>
+  ): Boolean {
+    val taskRecord = taskStore.load(taskId) ?: return false
+    val segments = taskRecord.segments ?: return false
 
-    val stateFlow = MutableStateFlow<DownloadState>(DownloadState.Pending)
+    stateFlow.value = DownloadState.Pending
+    segmentsFlow.value = segments
 
     updateTaskRecord(taskId) {
       it.copy(
@@ -391,13 +443,14 @@ internal class DownloadCoordinator(
 
     val job = scope.launch {
       try {
-        resumeDownload(taskId, metadata, stateFlow)
+        resumeDownload(taskId, taskRecord, segments, stateFlow, segmentsFlow)
       } catch (e: CancellationException) {
         if (stateFlow.value !is DownloadState.Paused) {
           stateFlow.value = DownloadState.Canceled
         }
         throw e
       } catch (e: Exception) {
+        if (e is CancellationException) throw e
         val error = when (e) {
           is KDownError -> e
           else -> KDownError.Unknown(e)
@@ -411,29 +464,34 @@ internal class DownloadCoordinator(
       activeDownloads[taskId] = ActiveDownload(
         job = job,
         stateFlow = stateFlow,
-        metadata = metadata,
+        segmentsFlow = segmentsFlow,
+        segments = segments,
         fileAccessor = null
       )
     }
 
-    return stateFlow.asStateFlow()
+    return true
   }
 
   private suspend fun resumeDownload(
     taskId: String,
-    metadata: DownloadMetadata,
-    stateFlow: MutableStateFlow<DownloadState>
+    taskRecord: TaskRecord,
+    segments: List<Segment>,
+    stateFlow: MutableStateFlow<DownloadState>,
+    segmentsFlow: MutableStateFlow<List<Segment>>
   ) {
     KDownLogger.i("Coordinator") {
-      "Resuming download for taskId=$taskId, url=${metadata.url}"
+      "Resuming download for taskId=$taskId, url=${taskRecord.request.url}"
     }
     KDownLogger.d("Coordinator") {
       "Validating server state for resume"
     }
     val detector = RangeSupportDetector(httpEngine)
-    val serverInfo = detector.detect(metadata.url, metadata.headers)
+    val serverInfo = detector.detect(
+      taskRecord.request.url, taskRecord.request.headers
+    )
 
-    if (metadata.etag != null && serverInfo.etag != metadata.etag) {
+    if (taskRecord.etag != null && serverInfo.etag != taskRecord.etag) {
       KDownLogger.w("Coordinator") {
         "ETag mismatch - file has changed on server"
       }
@@ -442,8 +500,8 @@ internal class DownloadCoordinator(
       )
     }
 
-    if (metadata.lastModified != null &&
-      serverInfo.lastModified != metadata.lastModified
+    if (taskRecord.lastModified != null &&
+      serverInfo.lastModified != taskRecord.lastModified
     ) {
       KDownLogger.w("Coordinator") {
         "Last-Modified mismatch - file has changed on server"
@@ -456,34 +514,39 @@ internal class DownloadCoordinator(
       "Server validation passed, continuing resume"
     }
 
-    val fileAccessor = fileAccessorFactory(metadata.destPath)
+    val fileAccessor = fileAccessorFactory(taskRecord.destPath)
 
     mutex.withLock {
       activeDownloads[taskId]?.let {
-        it.metadata = metadata
+        it.segments = segments
         it.fileAccessor = fileAccessor
+        it.totalBytes = taskRecord.totalBytes
       }
     }
 
     try {
-      downloadWithRetry(taskId, metadata, fileAccessor, stateFlow)
+      downloadWithRetry(
+        taskId, taskRecord, segments, fileAccessor, stateFlow, segmentsFlow
+      )
 
       fileAccessor.flush()
-      metadataStore.clear(taskId)
 
       updateTaskRecord(taskId) {
         it.copy(
           state = TaskState.COMPLETED,
-          downloadedBytes = metadata.totalBytes,
+          downloadedBytes = taskRecord.totalBytes,
+          segments = null,
           updatedAt = currentTimeMillis()
         )
       }
 
-      stateFlow.value = DownloadState.Completed(metadata.destPath)
+      stateFlow.value = DownloadState.Completed(taskRecord.destPath)
     } finally {
       fileAccessor.close()
-      mutex.withLock {
-        activeDownloads.remove(taskId)
+      withContext(NonCancellable) {
+        mutex.withLock {
+          activeDownloads.remove(taskId)
+        }
       }
     }
   }
@@ -498,8 +561,13 @@ internal class DownloadCoordinator(
       active?.stateFlow?.value = DownloadState.Canceled
       activeDownloads.remove(taskId)
     }
-    metadataStore.clear(taskId)
-    updateTaskState(taskId, TaskState.CANCELED)
+    updateTaskRecord(taskId) {
+      it.copy(
+        state = TaskState.CANCELED,
+        segments = null,
+        updatedAt = currentTimeMillis()
+      )
+    }
   }
 
   suspend fun getState(taskId: String): DownloadState? {

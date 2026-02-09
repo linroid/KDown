@@ -1,6 +1,8 @@
 package com.linroid.kdown
 
+import com.linroid.kdown.model.PathSerializer
 import kotlinx.io.files.Path
+import kotlinx.serialization.Serializable
 
 /**
  * Describes a file to download.
@@ -19,11 +21,13 @@ import kotlinx.io.files.Path
  *   [FileNameResolver] implementations or other extensions. KDown
  *   itself does not read these values.
  */
+@Serializable
 data class DownloadRequest(
   val url: String,
+  @Serializable(with = PathSerializer::class)
   val directory: Path,
   val fileName: String? = null,
-  val connections: Int = 4,
+  val connections: Int = 1,
   val headers: Map<String, String> = emptyMap(),
   val properties: Map<String, String> = emptyMap()
 ) {

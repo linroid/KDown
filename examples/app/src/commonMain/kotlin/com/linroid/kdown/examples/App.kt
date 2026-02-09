@@ -45,7 +45,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,10 +61,7 @@ import com.linroid.kdown.DownloadTask
 import com.linroid.kdown.KDown
 import com.linroid.kdown.KtorHttpEngine
 import com.linroid.kdown.Logger
-import com.linroid.kdown.error.KDownError
 import com.linroid.kdown.model.DownloadState
-import com.linroid.kdown.model.TaskRecord
-import com.linroid.kdown.model.TaskState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
@@ -89,8 +85,7 @@ fun App() {
     )
   }
   val scope = rememberCoroutineScope()
-  val activeTasks = remember { mutableStateMapOf<String, DownloadTask>() }
-  var taskRecords by remember { mutableStateOf<List<TaskRecord>>(emptyList()) }
+  val tasks by kdown.tasks.collectAsState()
   var showAddDialog by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -99,15 +94,11 @@ fun App() {
   }
 
   LaunchedEffect(Unit) {
-    taskRecords = kdown.getAllTasks()
-      .sortedByDescending { it.createdAt }
-    val restored = kdown.restoreTasks()
-    restored.forEach { task -> activeTasks[task.taskId] = task }
+    kdown.loadTasks()
   }
 
-  suspend fun refreshRecords() {
-    taskRecords = kdown.getAllTasks()
-      .sortedByDescending { it.createdAt }
+  val sortedTasks = remember(tasks) {
+    tasks.sortedByDescending { it.createdAt }
   }
 
   MaterialTheme {
@@ -135,7 +126,7 @@ fun App() {
         }
       }
     ) { paddingValues ->
-      if (taskRecords.isEmpty() && errorMessage == null) {
+      if (sortedTasks.isEmpty() && errorMessage == null) {
         EmptyState(
           modifier = Modifier
             .fillMaxSize()
@@ -181,60 +172,16 @@ fun App() {
             }
           }
           items(
-            items = taskRecords,
+            items = sortedTasks,
             key = { it.taskId }
-          ) { record ->
+          ) { task ->
             DownloadTaskItem(
-              record = record,
-              activeTask = activeTasks[record.taskId],
-              onPause = {
-                scope.launch {
-                  activeTasks[record.taskId]?.pause()
-                  refreshRecords()
-                }
-              },
-              onResume = {
-                scope.launch {
-                  val task = activeTasks[record.taskId]
-                  val resumed = task?.resume()
-                  if (resumed != null) {
-                    activeTasks[record.taskId] = resumed
-                  }
-                  refreshRecords()
-                }
-              },
-              onCancel = {
-                scope.launch {
-                  activeTasks[record.taskId]?.cancel()
-                  activeTasks.remove(record.taskId)
-                  refreshRecords()
-                }
-              },
-              onRetry = {
-                scope.launch {
-                  activeTasks.remove(record.taskId)
-                  kdown.removeTask(record.taskId)
-                  val destPath = record.destPath
-                  val request = DownloadRequest(
-                    url = record.url,
-                    directory = destPath.parent ?: Path("."),
-                    fileName = destPath.name,
-                    connections = record.connections,
-                    headers = record.headers
-                  )
-                  val task = kdown.download(request)
-                  activeTasks[task.taskId] = task
-                  refreshRecords()
-                }
-              },
-              onRemove = {
-                scope.launch {
-                  activeTasks[record.taskId]?.cancel()
-                  activeTasks.remove(record.taskId)
-                  kdown.removeTask(record.taskId)
-                  refreshRecords()
-                }
-              }
+              task = task,
+              onPause = { scope.launch { task.pause() } },
+              onResume = { scope.launch { task.resume() } },
+              onCancel = { scope.launch { task.cancel() } },
+              onRetry = { scope.launch { task.resume() } },
+              onRemove = { scope.launch { task.remove() } }
             )
           }
         }
@@ -250,11 +197,9 @@ fun App() {
           startDownload(
             scope = scope,
             kdown = kdown,
-            activeTasks = activeTasks,
             url = url,
             directory = Path("downloads"),
             fileName = fileName.ifBlank { null },
-            onRefresh = { scope.launch { refreshRecords() } },
             onError = { errorMessage = it }
           )
         }
@@ -368,21 +313,19 @@ private fun AddDownloadDialog(
 
 @Composable
 private fun DownloadTaskItem(
-  record: TaskRecord,
-  activeTask: DownloadTask?,
+  task: DownloadTask,
   onPause: () -> Unit,
   onResume: () -> Unit,
   onCancel: () -> Unit,
   onRetry: () -> Unit,
   onRemove: () -> Unit
 ) {
-  val liveState = activeTask?.state
-    ?.collectAsState(DownloadState.Idle)?.value
-  val displayState = liveState ?: recordToDisplayState(record)
-  val fileName = record.destPath.name
-  val isDownloading = displayState is DownloadState.Downloading ||
-    displayState is DownloadState.Pending
-  val isPaused = displayState is DownloadState.Paused
+  val state by task.state.collectAsState()
+  val fileName = task.request.fileName
+    ?: extractFilename(task.request.url).ifBlank { "download" }
+  val isDownloading = state is DownloadState.Downloading ||
+    state is DownloadState.Pending
+  val isPaused = state is DownloadState.Paused
 
   Card(
     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -406,7 +349,7 @@ private fun DownloadTaskItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
       ) {
-        StatusIndicator(displayState)
+        StatusIndicator(state)
         Column(modifier = Modifier.weight(1f)) {
           Text(
             text = fileName,
@@ -416,7 +359,7 @@ private fun DownloadTaskItem(
             overflow = TextOverflow.Ellipsis
           )
           Text(
-            text = record.url,
+            text = task.request.url,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -425,9 +368,9 @@ private fun DownloadTaskItem(
         }
       }
 
-      when (displayState) {
+      when (val s = state) {
         is DownloadState.Downloading -> {
-          val progress = displayState.progress
+          val progress = s.progress
           val pct = (progress.percent * 100).coerceIn(0f, 100f)
           LinearProgressIndicator(
             progress = { progress.percent },
@@ -439,7 +382,9 @@ private fun DownloadTaskItem(
               append(" \u00b7 ${formatBytes(progress.downloadedBytes)}")
               append(" / ${formatBytes(progress.totalBytes)}")
               if (progress.bytesPerSecond > 0) {
-                append(" \u00b7 ${formatBytes(progress.bytesPerSecond)}/s")
+                append(
+                  " \u00b7 ${formatBytes(progress.bytesPerSecond)}/s"
+                )
               }
             },
             style = MaterialTheme.typography.bodySmall,
@@ -455,23 +400,19 @@ private fun DownloadTaskItem(
           )
         }
         is DownloadState.Paused -> {
-          if (record.totalBytes > 0) {
-            val pausedPct = if (record.totalBytes > 0) {
-              (record.downloadedBytes * 100 / record.totalBytes)
-            } else {
-              0L
-            }
+          val progress = s.progress
+          if (progress.totalBytes > 0) {
+            val pausedPct =
+              (progress.percent * 100).coerceIn(0f, 100f)
             LinearProgressIndicator(
-              progress = {
-                record.downloadedBytes.toFloat() / record.totalBytes
-              },
+              progress = { progress.percent },
               modifier = Modifier.fillMaxWidth(),
               trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
             Text(
-              text = "Paused \u00b7 $pausedPct% \u00b7 " +
-                "${formatBytes(record.downloadedBytes)} / " +
-                formatBytes(record.totalBytes),
+              text = "Paused \u00b7 ${pausedPct.toInt()}% \u00b7 " +
+                "${formatBytes(progress.downloadedBytes)} / " +
+                formatBytes(progress.totalBytes),
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -492,7 +433,7 @@ private fun DownloadTaskItem(
         }
         is DownloadState.Failed -> {
           Text(
-            text = "Failed: ${displayState.error.message}",
+            text = "Failed: ${s.error.message}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             maxLines = 2,
@@ -516,7 +457,7 @@ private fun DownloadTaskItem(
       }
 
       TaskActionButtons(
-        state = displayState,
+        state = state,
         onPause = onPause,
         onResume = onResume,
         onCancel = onCancel,
@@ -540,9 +481,11 @@ private fun StatusIndicator(state: DownloadState) {
   val fgColor = when (state) {
     is DownloadState.Downloading,
     is DownloadState.Pending -> MaterialTheme.colorScheme.onPrimaryContainer
-    is DownloadState.Completed -> MaterialTheme.colorScheme.onTertiaryContainer
+    is DownloadState.Completed ->
+      MaterialTheme.colorScheme.onTertiaryContainer
     is DownloadState.Failed -> MaterialTheme.colorScheme.onErrorContainer
-    is DownloadState.Paused -> MaterialTheme.colorScheme.onSecondaryContainer
+    is DownloadState.Paused ->
+      MaterialTheme.colorScheme.onSecondaryContainer
     else -> MaterialTheme.colorScheme.onSurfaceVariant
   }
   val label = when (state) {
@@ -651,23 +594,6 @@ private fun TaskActionButtons(
   }
 }
 
-private fun recordToDisplayState(record: TaskRecord): DownloadState {
-  return when (record.state) {
-    TaskState.PENDING -> DownloadState.Pending
-    TaskState.DOWNLOADING -> DownloadState.Pending
-    TaskState.PAUSED -> DownloadState.Paused
-    TaskState.COMPLETED -> DownloadState.Completed(record.destPath)
-    TaskState.FAILED -> DownloadState.Failed(
-      KDownError.Unknown(
-        cause = Exception(
-          record.errorMessage ?: "Unknown error"
-        )
-      )
-    )
-    TaskState.CANCELED -> DownloadState.Canceled
-  }
-}
-
 private fun extractFilename(url: String): String {
   val path = url.trim()
     .substringBefore("?")
@@ -680,11 +606,9 @@ private fun extractFilename(url: String): String {
 private fun startDownload(
   scope: CoroutineScope,
   kdown: KDown,
-  activeTasks: MutableMap<String, DownloadTask>,
   url: String,
   directory: Path,
   fileName: String?,
-  onRefresh: () -> Unit,
   onError: (String) -> Unit = {}
 ) {
   scope.launch {
@@ -696,12 +620,8 @@ private fun startDownload(
         connections = 4
       )
       kdown.download(request)
-    }.onSuccess { task ->
-      activeTasks[task.taskId] = task
-      onRefresh()
     }.onFailure { e ->
       onError(e.message ?: "Failed to start download")
-      onRefresh()
     }
   }
 }
