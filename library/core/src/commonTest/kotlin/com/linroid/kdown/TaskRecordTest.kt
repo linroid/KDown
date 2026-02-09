@@ -1,5 +1,6 @@
 package com.linroid.kdown
 
+import com.linroid.kdown.model.Segment
 import com.linroid.kdown.model.TaskRecord
 import com.linroid.kdown.model.TaskState
 import kotlinx.io.files.Path
@@ -12,31 +13,47 @@ class TaskRecordTest {
 
   private val json = Json { ignoreUnknownKeys = true }
 
+  private fun defaultRequest(
+    url: String = "https://example.com/file.bin",
+    connections: Int = 1,
+    headers: Map<String, String> = emptyMap()
+  ) = DownloadRequest(
+    url = url,
+    directory = Path("/tmp"),
+    connections = connections,
+    headers = headers
+  )
+
   @Test
   fun defaultValues() {
     val record = TaskRecord(
       taskId = "test-1",
-      url = "https://example.com/file.bin",
+      request = defaultRequest(),
       destPath = Path("/tmp/file.bin"),
       createdAt = 1000L,
       updatedAt = 1000L
     )
-    assertEquals(4, record.connections)
-    assertEquals(emptyMap(), record.headers)
+    assertEquals(1, record.request.connections)
+    assertEquals(emptyMap(), record.request.headers)
     assertEquals(TaskState.PENDING, record.state)
     assertEquals(-1, record.totalBytes)
     assertEquals(0, record.downloadedBytes)
     assertNull(record.errorMessage)
+    assertNull(record.acceptRanges)
+    assertNull(record.etag)
+    assertNull(record.lastModified)
+    assertNull(record.segments)
   }
 
   @Test
   fun serialization_roundTrips() {
     val record = TaskRecord(
       taskId = "test-1",
-      url = "https://example.com/file.bin",
+      request = defaultRequest(
+        connections = 8,
+        headers = mapOf("X-Custom" to "value")
+      ),
       destPath = Path("/tmp/file.bin"),
-      connections = 8,
-      headers = mapOf("X-Custom" to "value"),
       state = TaskState.PAUSED,
       totalBytes = 2048,
       downloadedBytes = 1024,
@@ -45,18 +62,28 @@ class TaskRecordTest {
       updatedAt = 2000L
     )
 
-    val serialized = json.encodeToString(TaskRecord.serializer(), record)
-    val deserialized = json.decodeFromString(TaskRecord.serializer(), serialized)
+    val serialized = json.encodeToString(
+      TaskRecord.serializer(), record
+    )
+    val deserialized = json.decodeFromString(
+      TaskRecord.serializer(), serialized
+    )
 
     assertEquals(record.taskId, deserialized.taskId)
-    assertEquals(record.url, deserialized.url)
-    assertEquals(record.destPath.toString(), deserialized.destPath.toString())
-    assertEquals(record.connections, deserialized.connections)
-    assertEquals(record.headers, deserialized.headers)
+    assertEquals(record.request.url, deserialized.request.url)
+    assertEquals(
+      record.destPath.toString(),
+      deserialized.destPath.toString()
+    )
+    assertEquals(record.request.connections, deserialized.request.connections)
+    assertEquals(record.request.headers, deserialized.request.headers)
     assertEquals(record.state, deserialized.state)
     assertEquals(record.totalBytes, deserialized.totalBytes)
     assertEquals(record.downloadedBytes, deserialized.downloadedBytes)
     assertEquals(record.errorMessage, deserialized.errorMessage)
+    assertEquals(record.acceptRanges, deserialized.acceptRanges)
+    assertEquals(record.etag, deserialized.etag)
+    assertEquals(record.lastModified, deserialized.lastModified)
     assertEquals(record.createdAt, deserialized.createdAt)
     assertEquals(record.updatedAt, deserialized.updatedAt)
   }
@@ -65,7 +92,7 @@ class TaskRecordTest {
   fun serialization_withErrorMessage() {
     val record = TaskRecord(
       taskId = "test-1",
-      url = "https://example.com/file.bin",
+      request = defaultRequest(),
       destPath = Path("/tmp/file.bin"),
       state = TaskState.FAILED,
       errorMessage = "Network timeout",
@@ -73,8 +100,12 @@ class TaskRecordTest {
       updatedAt = 2000L
     )
 
-    val serialized = json.encodeToString(TaskRecord.serializer(), record)
-    val deserialized = json.decodeFromString(TaskRecord.serializer(), serialized)
+    val serialized = json.encodeToString(
+      TaskRecord.serializer(), record
+    )
+    val deserialized = json.decodeFromString(
+      TaskRecord.serializer(), serialized
+    )
 
     assertEquals("Network timeout", deserialized.errorMessage)
     assertEquals(TaskState.FAILED, deserialized.state)
@@ -84,9 +115,8 @@ class TaskRecordTest {
   fun copy_preservesValues() {
     val original = TaskRecord(
       taskId = "test-1",
-      url = "https://example.com/file.bin",
+      request = defaultRequest(),
       destPath = Path("/tmp/file.bin"),
-      connections = 4,
       state = TaskState.DOWNLOADING,
       totalBytes = 1000,
       downloadedBytes = 500,
@@ -101,10 +131,122 @@ class TaskRecordTest {
     )
 
     assertEquals("test-1", updated.taskId)
-    assertEquals("https://example.com/file.bin", updated.url)
+    assertEquals("https://example.com/file.bin", updated.request.url)
     assertEquals(TaskState.PAUSED, updated.state)
     assertEquals(600, updated.downloadedBytes)
     assertEquals(1000L, updated.createdAt)
     assertEquals(2000L, updated.updatedAt)
   }
+
+  @Test
+  fun serialization_withServerInfoFields() {
+    val record = TaskRecord(
+      taskId = "test-1",
+      request = defaultRequest(),
+      destPath = Path("/tmp/file.bin"),
+      state = TaskState.DOWNLOADING,
+      totalBytes = 2048,
+      acceptRanges = true,
+      etag = "\"abc123\"",
+      lastModified = "Wed, 21 Oct 2023 07:28:00 GMT",
+      createdAt = 1000L,
+      updatedAt = 2000L
+    )
+
+    val serialized = json.encodeToString(
+      TaskRecord.serializer(), record
+    )
+    val deserialized = json.decodeFromString(
+      TaskRecord.serializer(), serialized
+    )
+
+    assertEquals(true, deserialized.acceptRanges)
+    assertEquals("\"abc123\"", deserialized.etag)
+    assertEquals(
+      "Wed, 21 Oct 2023 07:28:00 GMT",
+      deserialized.lastModified
+    )
+  }
+
+  @Test
+  fun serialization_withSegments() {
+    val segments = listOf(
+      Segment(index = 0, start = 0, end = 499, downloadedBytes = 200),
+      Segment(index = 1, start = 500, end = 999, downloadedBytes = 300)
+    )
+    val record = TaskRecord(
+      taskId = "test-1",
+      request = defaultRequest(),
+      destPath = Path("/tmp/file.bin"),
+      state = TaskState.PAUSED,
+      totalBytes = 1000,
+      downloadedBytes = 500,
+      segments = segments,
+      createdAt = 1000L,
+      updatedAt = 2000L
+    )
+
+    val serialized = json.encodeToString(
+      TaskRecord.serializer(), record
+    )
+    val deserialized = json.decodeFromString(
+      TaskRecord.serializer(), serialized
+    )
+
+    assertEquals(segments, deserialized.segments)
+    assertEquals(2, deserialized.segments?.size)
+    assertEquals(200, deserialized.segments?.get(0)?.downloadedBytes)
+    assertEquals(300, deserialized.segments?.get(1)?.downloadedBytes)
+  }
+
+  @Test
+  fun deserialization_withoutSegments_defaultsToNull() {
+    val jsonStr = """
+      {
+        "taskId": "t1",
+        "request": {
+          "url": "https://example.com/f",
+          "directory": "/tmp",
+          "connections": 4,
+          "headers": {},
+          "properties": {}
+        },
+        "destPath": "/tmp/f",
+        "state": "COMPLETED",
+        "totalBytes": 1000,
+        "downloadedBytes": 1000,
+        "createdAt": 0,
+        "updatedAt": 0
+      }
+    """.trimIndent()
+    val record = json.decodeFromString<TaskRecord>(jsonStr)
+    assertNull(record.segments)
+  }
+
+  @Test
+  fun deserialization_withoutServerInfoFields_defaultsToNull() {
+    val jsonStr = """
+      {
+        "taskId": "t1",
+        "request": {
+          "url": "https://example.com/f",
+          "directory": "/tmp",
+          "connections": 4,
+          "headers": {},
+          "properties": {}
+        },
+        "destPath": "/tmp/f",
+        "state": "PENDING",
+        "totalBytes": 100,
+        "downloadedBytes": 0,
+        "createdAt": 0,
+        "updatedAt": 0
+      }
+    """.trimIndent()
+    val record = json.decodeFromString<TaskRecord>(jsonStr)
+    assertNull(record.acceptRanges)
+    assertNull(record.etag)
+    assertNull(record.lastModified)
+  }
+
 }

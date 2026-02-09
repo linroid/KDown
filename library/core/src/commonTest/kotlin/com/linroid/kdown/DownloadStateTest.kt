@@ -44,12 +44,12 @@ class DownloadStateTest {
 
   @Test
   fun paused_isNotTerminal() {
-    assertFalse(DownloadState.Paused.isTerminal)
+    assertFalse(DownloadState.Paused(DownloadProgress(50, 100)).isTerminal)
   }
 
   @Test
   fun paused_isNotActive() {
-    assertFalse(DownloadState.Paused.isActive)
+    assertFalse(DownloadState.Paused(DownloadProgress(50, 100)).isActive)
   }
 
   @Test

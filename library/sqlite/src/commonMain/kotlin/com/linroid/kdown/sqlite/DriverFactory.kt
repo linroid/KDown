@@ -13,21 +13,17 @@ expect class DriverFactory {
 }
 
 /**
- * Convenience function that creates both a [SqliteTaskStore] and a
- * [SqliteMetadataStore] sharing the same underlying SQLite database.
+ * Convenience function that creates a [SqliteTaskStore] backed by
+ * the platform-specific SQLite database.
  *
  * ```kotlin
- * val (taskStore, metadataStore) = createSqliteStores(driverFactory)
+ * val taskStore = createSqliteTaskStore(driverFactory)
  * val kdown = KDown(
  *   httpEngine = KtorHttpEngine(),
- *   metadataStore = metadataStore,
  *   taskStore = taskStore,
  * )
  * ```
  */
-fun createSqliteStores(
-  driverFactory: DriverFactory
-): Pair<SqliteTaskStore, SqliteMetadataStore> {
-  val driver = driverFactory.createDriver()
-  return SqliteTaskStore(driver) to SqliteMetadataStore(driver)
+fun createSqliteTaskStore(driverFactory: DriverFactory): SqliteTaskStore {
+  return SqliteTaskStore(driverFactory.createDriver())
 }

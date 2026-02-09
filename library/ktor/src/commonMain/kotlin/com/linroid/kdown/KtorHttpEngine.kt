@@ -11,6 +11,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readAvailable
+import kotlin.coroutines.cancellation.CancellationException
 
 class KtorHttpEngine(
   private val client: HttpClient = HttpClient()
@@ -45,6 +46,8 @@ class KtorHttpEngine(
         lastModified = lastModified,
         contentDisposition = contentDisposition
       )
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: KDownError) {
       throw e
     } catch (e: Exception) {
@@ -91,6 +94,8 @@ class KtorHttpEngine(
           }
         }
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: KDownError) {
       throw e
     } catch (e: Exception) {

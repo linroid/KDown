@@ -9,12 +9,12 @@ import kotlin.test.assertNull
 class DownloadRequestTest {
 
   @Test
-  fun defaultConnections_isFour() {
+  fun defaultConnections_isOne() {
     val request = DownloadRequest(
       url = "https://example.com/file",
       directory = Path("/tmp")
     )
-    assertEquals(4, request.connections)
+    assertEquals(1, request.connections)
   }
 
   @Test

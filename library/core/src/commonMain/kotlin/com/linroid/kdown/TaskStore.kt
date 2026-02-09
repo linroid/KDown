@@ -4,15 +4,13 @@ import com.linroid.kdown.model.TaskRecord
 
 /**
  * Pluggable persistence layer for download task records. Implementations
- * store [TaskRecord] objects so that tasks can be enumerated and restored
- * after a process restart.
+ * store [TaskRecord] objects (including segment-level progress) so that
+ * tasks can be enumerated and resumed after a process restart.
  *
  * The default implementation is [com.linroid.kdown.internal.InMemoryTaskStore],
  * which keeps records in memory and loses them on restart. For true persistence,
  * use a durable implementation such as the SQLite-backed store from the
  * `library:sqlite` module.
- *
- * @see MetadataStore for segment-level download metadata persistence
  */
 interface TaskStore {
   /** Save or update a task record. */

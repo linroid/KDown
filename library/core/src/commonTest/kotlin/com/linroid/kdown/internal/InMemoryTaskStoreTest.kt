@@ -1,5 +1,6 @@
 package com.linroid.kdown.internal
 
+import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.model.TaskRecord
 import com.linroid.kdown.model.TaskState
 import kotlinx.coroutines.test.runTest
@@ -16,10 +17,13 @@ class InMemoryTaskStoreTest {
     state: TaskState = TaskState.PENDING
   ) = TaskRecord(
     taskId = taskId,
-    url = "https://example.com/file.bin",
+    request = DownloadRequest(
+      url = "https://example.com/file.bin",
+      directory = Path("/tmp"),
+      connections = 4,
+      headers = mapOf("Authorization" to "Bearer token")
+    ),
     destPath = Path("/tmp/file.bin"),
-    connections = 4,
-    headers = mapOf("Authorization" to "Bearer token"),
     state = state,
     totalBytes = 1000,
     downloadedBytes = 0,

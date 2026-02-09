@@ -1,14 +1,15 @@
 package com.linroid.kdown.sqlite
 
 import app.cash.sqldelight.db.SqlDriver
+import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.TaskStore
+import com.linroid.kdown.model.Segment
 import com.linroid.kdown.model.TaskRecord
 import com.linroid.kdown.model.TaskState
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.files.Path
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 /**
@@ -22,7 +23,7 @@ class SqliteTaskStore(driver: SqlDriver) : TaskStore {
   private val queries = database.taskRecordsQueries
   private val mutex = Mutex()
   private val json = Json { ignoreUnknownKeys = true }
-  private val headersSerializer = MapSerializer(String.serializer(), String.serializer())
+  private val segmentListSerializer = ListSerializer(Segment.serializer())
 
   /**
    * Saves a [TaskRecord] to the SQLite database. If a record with the same
@@ -31,14 +32,20 @@ class SqliteTaskStore(driver: SqlDriver) : TaskStore {
   override suspend fun save(record: TaskRecord): Unit = mutex.withLock {
     queries.save(
       task_id = record.taskId,
-      url = record.url,
+      request_json = json.encodeToString(
+        DownloadRequest.serializer(), record.request
+      ),
       dest_path = record.destPath.toString(),
-      connections = record.connections.toLong(),
-      headers = json.encodeToString(headersSerializer, record.headers),
       state = record.state.name,
       total_bytes = record.totalBytes,
       downloaded_bytes = record.downloadedBytes,
       error_message = record.errorMessage,
+      accept_ranges = record.acceptRanges?.let { if (it) 1L else 0L },
+      etag = record.etag,
+      last_modified = record.lastModified,
+      segments_json = record.segments?.let {
+        json.encodeToString(segmentListSerializer, it)
+      },
       created_at = record.createdAt,
       updated_at = record.updatedAt
     )
@@ -68,14 +75,24 @@ class SqliteTaskStore(driver: SqlDriver) : TaskStore {
   private fun Task_records.toTaskRecord(): TaskRecord {
     return TaskRecord(
       taskId = task_id,
-      url = url,
+      request = json.decodeFromString(
+        DownloadRequest.serializer(), request_json
+      ),
       destPath = Path(dest_path),
-      connections = connections.toInt(),
-      headers = json.decodeFromString(headersSerializer, headers),
       state = TaskState.valueOf(state),
       totalBytes = total_bytes,
       downloadedBytes = downloaded_bytes,
       errorMessage = error_message,
+      acceptRanges = accept_ranges?.let { it != 0L },
+      etag = etag,
+      lastModified = last_modified,
+      segments = segments_json?.let {
+        try {
+          json.decodeFromString(segmentListSerializer, it)
+        } catch (_: Exception) {
+          null
+        }
+      },
       createdAt = created_at,
       updatedAt = updated_at
     )
