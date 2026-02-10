@@ -55,10 +55,10 @@ Android, JVM/Desktop, iOS, and WebAssembly platforms.
 - Duplicate download guards: `start()`, `startFromRecord()`, `resume()` check `activeDownloads` to prevent concurrent writes
 - State transition guards in `KDown` action lambdas prevent invalid operations (e.g., pause on completed)
 
-### 5. Metadata Persistence (✅ `MetadataStore` interface)
+### 5. Metadata Persistence (✅ `TaskStore` interface)
 - Interface implemented with two storage backends:
-  - `InMemoryMetadataStore`: for testing and ephemeral downloads
-  - `JsonMetadataStore`: file-based persistence using kotlinx-io
+  - `InMemoryTaskStore`: for testing and ephemeral downloads
+  - `SqliteTaskStore`: SQLite-based persistence (separate module)
 - Stores: url, destPath, totalBytes, acceptRanges, etag, lastModified, segment progress
 
 ### 6. Error Handling (✅ Sealed `KDownError`)
@@ -161,8 +161,9 @@ When working on this project:
 ### Architecture Patterns
 - All core logic lives in `commonMain` using expect/actual for platform differences
 - Avoid platform-specific APIs in common code
-- Use dependency injection for pluggable components (HttpEngine, MetadataStore, Logger)
+- Use dependency injection for pluggable components (HttpEngine, TaskStore, Logger)
 - Prefer composition over inheritance
+- Package structure: root (KDown, DownloadConfig, DownloadRequest, DownloadProgress, DownloadState), `task/` (DownloadTask, TaskStore, InMemoryTaskStore, TaskRecord, TaskState), `segment/` (Segment, SegmentCalculator, SegmentDownloader), `engine/` (HttpEngine, DownloadCoordinator, RangeSupportDetector, ServerInfo), `file/` (FileAccessor, FileNameResolver, DefaultFileNameResolver, PathSerializer), `download/` (TimeProvider), `log/` (Logger, KDownLogger), `error/` (KDownError)
 
 ### Testing
 - Add unit tests for new features in `commonTest`

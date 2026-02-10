@@ -57,11 +57,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.linroid.kdown.DownloadConfig
 import com.linroid.kdown.DownloadRequest
-import com.linroid.kdown.DownloadTask
 import com.linroid.kdown.KDown
-import com.linroid.kdown.KtorHttpEngine
-import com.linroid.kdown.Logger
-import com.linroid.kdown.model.DownloadState
+import com.linroid.kdown.engine.KtorHttpEngine
+import com.linroid.kdown.DownloadState
+import com.linroid.kdown.log.Logger
+import com.linroid.kdown.task.DownloadTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path

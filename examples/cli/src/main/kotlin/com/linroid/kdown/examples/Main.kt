@@ -3,8 +3,8 @@ package com.linroid.kdown.examples
 import com.linroid.kdown.DownloadConfig
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.KDown
-import com.linroid.kdown.KtorHttpEngine
-import com.linroid.kdown.model.DownloadState
+import com.linroid.kdown.engine.KtorHttpEngine
+import com.linroid.kdown.DownloadState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
