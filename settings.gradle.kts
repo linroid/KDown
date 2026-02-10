@@ -37,6 +37,7 @@ include(":library:core")
 include(":library:ktor")
 include(":library:kermit")
 include(":library:sqlite")
+include(":library:server")
 
 // Example modules
 include(":examples:app")
