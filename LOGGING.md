@@ -24,7 +24,7 @@ dependencies {
 
 Use it:
 ```kotlin
-import com.linroid.kdown.KermitLogger
+import com.linroid.kdown.log.KermitLogger
 import co.touchlab.kermit.Severity
 
 val logger = KermitLogger(

@@ -19,8 +19,8 @@ dependencies {
 
 ```kotlin
 import com.linroid.kdown.KDown
-import com.linroid.kdown.KermitLogger
-import com.linroid.kdown.KtorHttpEngine
+import com.linroid.kdown.engine.KtorHttpEngine
+import com.linroid.kdown.log.KermitLogger
 import co.touchlab.kermit.Severity
 
 // Create a KermitLogger with desired severity level

@@ -1,8 +1,6 @@
 package com.linroid.kdown
 
 import com.linroid.kdown.error.KDownError
-import com.linroid.kdown.model.DownloadProgress
-import com.linroid.kdown.model.DownloadState
 import kotlinx.io.files.Path
 import kotlin.test.Test
 import kotlin.test.assertFalse

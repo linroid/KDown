@@ -1,6 +1,5 @@
 package com.linroid.kdown
 
-import com.linroid.kdown.model.DownloadProgress
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

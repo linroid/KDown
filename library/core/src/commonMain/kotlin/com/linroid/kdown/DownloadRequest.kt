@@ -1,6 +1,7 @@
 package com.linroid.kdown
 
-import com.linroid.kdown.model.PathSerializer
+import com.linroid.kdown.file.FileNameResolver
+import com.linroid.kdown.file.PathSerializer
 import kotlinx.io.files.Path
 import kotlinx.serialization.Serializable
 
