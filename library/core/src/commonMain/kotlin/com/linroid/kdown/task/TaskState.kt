@@ -25,5 +25,6 @@ enum class TaskState {
 
   /** Whether the task can be restored/resumed after a process restart. */
   val isRestorable: Boolean
-    get() = this == PENDING || this == SCHEDULED || this == QUEUED || this == DOWNLOADING || this == PAUSED
+    get() = this == PENDING || this == SCHEDULED || this == QUEUED ||
+      this == DOWNLOADING || this == PAUSED
 }
