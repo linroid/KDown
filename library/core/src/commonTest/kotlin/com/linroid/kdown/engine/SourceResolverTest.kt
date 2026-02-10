@@ -4,7 +4,9 @@ import com.linroid.kdown.error.KDownError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class SourceResolverTest {
 
@@ -86,16 +88,16 @@ class SourceResolverTest {
 
   @Test
   fun httpSource_canHandle_httpUrl() {
-    assert(httpSource.canHandle("http://example.com/file"))
-    assert(httpSource.canHandle("https://example.com/file"))
-    assert(httpSource.canHandle("HTTP://EXAMPLE.COM/FILE"))
-    assert(httpSource.canHandle("HTTPS://EXAMPLE.COM/FILE"))
+    assertTrue(httpSource.canHandle("http://example.com/file"))
+    assertTrue(httpSource.canHandle("https://example.com/file"))
+    assertTrue(httpSource.canHandle("HTTP://EXAMPLE.COM/FILE"))
+    assertTrue(httpSource.canHandle("HTTPS://EXAMPLE.COM/FILE"))
   }
 
   @Test
   fun httpSource_canNotHandle_nonHttpUrl() {
-    assert(!httpSource.canHandle("ftp://example.com/file"))
-    assert(!httpSource.canHandle("magnet:?xt=urn:btih:abc"))
-    assert(!httpSource.canHandle("/local/path/file"))
+    assertFalse(httpSource.canHandle("ftp://example.com/file"))
+    assertFalse(httpSource.canHandle("magnet:?xt=urn:btih:abc"))
+    assertFalse(httpSource.canHandle("/local/path/file"))
   }
 }
