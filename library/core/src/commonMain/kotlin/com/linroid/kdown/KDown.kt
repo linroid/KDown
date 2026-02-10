@@ -4,6 +4,7 @@ import com.linroid.kdown.engine.DelegatingSpeedLimiter
 import com.linroid.kdown.engine.DownloadCoordinator
 import com.linroid.kdown.engine.DownloadScheduler
 import com.linroid.kdown.engine.HttpEngine
+import com.linroid.kdown.engine.ScheduleManager
 import com.linroid.kdown.engine.SpeedLimiter
 import com.linroid.kdown.engine.TokenBucket
 import com.linroid.kdown.error.KDownError
@@ -79,6 +80,11 @@ class KDown(
     scope = scope
   )
 
+  private val scheduleManager = ScheduleManager(
+    scheduler = scheduler,
+    scope = scope
+  )
+
   private val tasksMutex = Mutex()
   private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
 
@@ -93,15 +99,24 @@ class KDown(
   suspend fun download(request: DownloadRequest): DownloadTask {
     val taskId = Uuid.random().toString()
     val now = Clock.System.now()
+    val isScheduled = request.schedule !is DownloadSchedule.Immediate ||
+      request.conditions.isNotEmpty()
     KDownLogger.i("KDown") {
       "Downloading: taskId=$taskId, url=${request.url}, " +
         "connections=${request.connections}, " +
-        "priority=${request.priority}"
+        "priority=${request.priority}" +
+        if (isScheduled) ", schedule=${request.schedule}" else ""
     }
     val stateFlow = MutableStateFlow<DownloadState>(DownloadState.Pending)
     val segmentsFlow = MutableStateFlow<List<Segment>>(emptyList())
 
-    scheduler.enqueue(taskId, request, now, stateFlow, segmentsFlow)
+    if (isScheduled) {
+      scheduleManager.schedule(
+        taskId, request, now, stateFlow, segmentsFlow
+      )
+    } else {
+      scheduler.enqueue(taskId, request, now, stateFlow, segmentsFlow)
+    }
 
     val task = DownloadTask(
       taskId = taskId,
@@ -136,13 +151,17 @@ class KDown(
         }
       },
       cancelAction = {
-        if (!stateFlow.value.isTerminal) {
+        val s = stateFlow.value
+        if (!s.isTerminal) {
+          scheduleManager.cancel(taskId)
           scheduler.dequeue(taskId)
           coordinator.cancel(taskId)
+          if (s is DownloadState.Scheduled) {
+            stateFlow.value = DownloadState.Canceled
+          }
         } else {
           KDownLogger.d("KDown") {
-            "Ignoring cancel for taskId=$taskId in state " +
-              "${stateFlow.value}"
+            "Ignoring cancel for taskId=$taskId in state $s"
           }
         }
       },
@@ -152,6 +171,29 @@ class KDown(
       },
       setPriorityAction = { priority ->
         scheduler.setPriority(taskId, priority)
+      },
+      rescheduleAction = { schedule, conditions ->
+        val s = stateFlow.value
+        if (s.isTerminal) {
+          KDownLogger.d("KDown") {
+            "Ignoring reschedule for taskId=$taskId in " +
+              "terminal state $s"
+          }
+          return@DownloadTask
+        }
+        KDownLogger.i("KDown") {
+          "Rescheduling taskId=$taskId, schedule=$schedule, " +
+            "conditions=${conditions.size}"
+        }
+        scheduleManager.cancel(taskId)
+        scheduler.dequeue(taskId)
+        if (s.isActive) {
+          coordinator.pause(taskId)
+        }
+        scheduleManager.reschedule(
+          taskId, request, schedule, conditions,
+          now, stateFlow, segmentsFlow
+        )
       }
     )
 
@@ -166,8 +208,10 @@ class KDown(
    * on individual tasks to continue interrupted downloads.
    *
    * State mapping:
-   * - `PENDING` / `DOWNLOADING` / `PAUSED` → [DownloadState.Paused]
-   *   (treat as paused, user decides when to resume)
+   * - `SCHEDULED` / `PENDING` / `QUEUED` / `DOWNLOADING` / `PAUSED`
+   *   → [DownloadState.Paused] (treat as paused, user decides when
+   *   to resume). `SCHEDULED` is mapped to Paused because conditions
+   *   are transient and cannot be restored after deserialization.
    * - `COMPLETED` → [DownloadState.Completed]
    * - `FAILED` → [DownloadState.Failed]
    * - `CANCELED` → [DownloadState.Canceled]
@@ -234,13 +278,18 @@ class KDown(
         }
       },
       cancelAction = {
-        if (!stateFlow.value.isTerminal) {
+        val s = stateFlow.value
+        if (!s.isTerminal) {
+          scheduleManager.cancel(record.taskId)
           scheduler.dequeue(record.taskId)
           coordinator.cancel(record.taskId)
+          if (s is DownloadState.Scheduled) {
+            stateFlow.value = DownloadState.Canceled
+          }
         } else {
           KDownLogger.d("KDown") {
             "Ignoring cancel for taskId=${record.taskId} " +
-              "in state ${stateFlow.value}"
+              "in state $s"
           }
         }
       },
@@ -250,12 +299,39 @@ class KDown(
       },
       setPriorityAction = { priority ->
         scheduler.setPriority(record.taskId, priority)
+      },
+      rescheduleAction = { schedule, conditions ->
+        val s = stateFlow.value
+        if (s.isTerminal) {
+          KDownLogger.d("KDown") {
+            "Ignoring reschedule for taskId=${record.taskId} in " +
+              "terminal state $s"
+          }
+          return@DownloadTask
+        }
+        KDownLogger.i("KDown") {
+          "Rescheduling taskId=${record.taskId}, " +
+            "schedule=$schedule, " +
+            "conditions=${conditions.size}"
+        }
+        scheduleManager.cancel(record.taskId)
+        scheduler.dequeue(record.taskId)
+        if (s.isActive) {
+          coordinator.pause(record.taskId)
+        }
+        scheduleManager.reschedule(
+          record.taskId, record.request, schedule, conditions,
+          record.createdAt, stateFlow, segmentsFlow
+        )
       }
     )
   }
 
   private fun mapRecordState(record: TaskRecord): DownloadState {
     return when (record.state) {
+      // SCHEDULED maps to Paused: conditions are @Transient and
+      // cannot be restored, so treat as interrupted download.
+      TaskState.SCHEDULED,
       TaskState.PENDING,
       TaskState.QUEUED,
       TaskState.DOWNLOADING,
@@ -289,6 +365,7 @@ class KDown(
   }
 
   private suspend fun removeTaskInternal(taskId: String) {
+    scheduleManager.cancel(taskId)
     scheduler.dequeue(taskId)
     coordinator.cancel(taskId)
     taskStore.remove(taskId)
