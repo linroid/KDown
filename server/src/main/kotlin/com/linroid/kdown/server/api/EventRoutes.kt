@@ -10,9 +10,6 @@ import io.ktor.server.sse.sse
 import io.ktor.sse.ServerSentEvent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -33,7 +30,7 @@ internal fun Route.eventRoutes(kdown: KDown) {
     coroutineScope {
       val activeJobs = mutableMapOf<String, Job>()
 
-      kdown.tasks.collectLatest { tasks ->
+      kdown.tasks.collect { tasks ->
         val currentIds = tasks.map { it.taskId }.toSet()
         val trackedIds = activeJobs.keys.toSet()
 
@@ -70,8 +67,13 @@ internal fun Route.eventRoutes(kdown: KDown) {
     val task = kdown.tasks.value.find { it.taskId == taskId }
     if (task == null) {
       // Send error and close
+      val errorEvent = TaskEvent(
+        taskId = taskId,
+        type = "error",
+        state = "not_found"
+      )
       send(ServerSentEvent(
-        data = """{"error":"Task not found: $taskId"}""",
+        data = json.encodeToString(errorEvent),
         event = "error"
       ))
       return@sse
@@ -84,16 +86,13 @@ internal fun Route.eventRoutes(kdown: KDown) {
 private suspend fun io.ktor.server.sse.ServerSSESession.trackTaskState(
   task: DownloadTask
 ) {
-  task.state
-    .map { state -> TaskMapper.stateToString(state) to state }
-    .distinctUntilChanged { old, new -> old.first == new.first }
-    .collect { (_, state) ->
-      val eventType = when (state) {
-        is DownloadState.Downloading -> "progress"
-        else -> "state_changed"
-      }
-      sendTaskEvent(task, eventType)
+  task.state.collect { state ->
+    val eventType = when (state) {
+      is DownloadState.Downloading -> "progress"
+      else -> "state_changed"
     }
+    sendTaskEvent(task, eventType)
+  }
 }
 
 private suspend fun io.ktor.server.sse.ServerSSESession.sendTaskEvent(
