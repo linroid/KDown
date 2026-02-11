@@ -5,8 +5,6 @@ import com.linroid.kdown.DownloadProgress
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.DownloadState
 import com.linroid.kdown.SpeedLimit
-import com.linroid.kdown.api.model.ProgressResponse
-import com.linroid.kdown.api.model.TaskEvent
 import com.linroid.kdown.error.KDownError
 import com.linroid.kdown.segment.Segment
 import kotlinx.io.files.Path
@@ -92,24 +90,6 @@ internal object WireMapper {
         downloadedBytes = wire.downloadedBytes
       )
     }
-  }
-
-  fun toTaskEvent(wire: WireTaskEvent): TaskEvent {
-    return TaskEvent(
-      taskId = wire.taskId,
-      type = wire.type,
-      state = wire.state,
-      progress = wire.progress?.let { p ->
-        ProgressResponse(
-          downloadedBytes = p.downloadedBytes,
-          totalBytes = p.totalBytes,
-          percent = p.percent,
-          bytesPerSecond = p.bytesPerSecond
-        )
-      },
-      error = wire.error,
-      filePath = wire.filePath
-    )
   }
 
   fun parseCreatedAt(createdAt: String): Instant {

@@ -5,7 +5,6 @@ import com.linroid.kdown.SpeedLimit
 import com.linroid.kdown.api.ConnectionState
 import com.linroid.kdown.api.KDown
 import com.linroid.kdown.api.model.ServerStatus
-import com.linroid.kdown.api.model.TaskEvent
 import com.linroid.kdown.task.DownloadTask
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -28,11 +27,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -83,10 +79,6 @@ class RemoteKDown(
   override val tasks: StateFlow<List<DownloadTask>> =
     _tasks.asStateFlow()
 
-  private val _events = MutableSharedFlow<TaskEvent>(
-    extraBufferCapacity = 64
-  )
-
   private var sseJob: Job? = null
 
   init {
@@ -133,8 +125,6 @@ class RemoteKDown(
     return json.decodeFromString(response.bodyAsText())
   }
 
-  override fun events(): Flow<TaskEvent> = _events.asSharedFlow()
-
   override fun close() {
     scope.cancel()
     httpClient.close()
@@ -160,7 +150,6 @@ class RemoteKDown(
               val wireEvent: WireTaskEvent =
                 json.decodeFromString(data)
               handleEvent(wireEvent)
-              _events.emit(WireMapper.toTaskEvent(wireEvent))
             } catch (_: Exception) {
               // Skip malformed events
             }

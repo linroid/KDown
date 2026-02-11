@@ -3,9 +3,7 @@ package com.linroid.kdown.api
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.SpeedLimit
 import com.linroid.kdown.api.model.ServerStatus
-import com.linroid.kdown.api.model.TaskEvent
 import com.linroid.kdown.task.DownloadTask
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -32,9 +30,6 @@ interface KDown {
 
   /** Get server/engine status. */
   suspend fun getStatus(): ServerStatus
-
-  /** Real-time event stream for all tasks. */
-  fun events(): Flow<TaskEvent>
 
   /** Release resources (HTTP client, SSE connection, etc.). */
   fun close()
