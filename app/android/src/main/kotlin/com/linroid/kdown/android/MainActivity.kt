@@ -1,4 +1,4 @@
-package com.linroid.kdown.app
+package com.linroid.kdown.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import com.linroid.kdown.app.App
 import com.linroid.kdown.app.backend.BackendFactory
 import com.linroid.kdown.app.backend.BackendManager
 import com.linroid.kdown.app.backend.LocalServerHandle

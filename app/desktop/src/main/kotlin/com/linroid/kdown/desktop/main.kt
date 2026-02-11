@@ -1,9 +1,10 @@
-package com.linroid.kdown.app
+package com.linroid.kdown.desktop
 
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.linroid.kdown.app.App
 import com.linroid.kdown.app.backend.BackendFactory
 import com.linroid.kdown.app.backend.BackendManager
 import com.linroid.kdown.app.backend.LocalServerHandle
