@@ -2,10 +2,10 @@ package com.linroid.kdown.embedded
 
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.DownloadState
-import com.linroid.kdown.KDown
+import com.linroid.kdown.KDown as KDownEngine
 import com.linroid.kdown.SpeedLimit
 import com.linroid.kdown.api.ConnectionState
-import com.linroid.kdown.api.KDownService
+import com.linroid.kdown.api.KDown
 import com.linroid.kdown.api.model.ServerStatus
 import com.linroid.kdown.api.model.TaskEvent
 import com.linroid.kdown.task.DownloadTask
@@ -18,12 +18,12 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 
 /**
- * Embedded in-process implementation of [KDownService] that delegates
- * to a [KDown] instance directly. No HTTP involved.
+ * Embedded in-process implementation of [KDown] that delegates
+ * to a [KDownEngine] instance directly. No HTTP involved.
  */
-class EmbeddedKDownService(
-  private val kdown: KDown
-) : KDownService {
+class EmbeddedKDown(
+  private val kdown: KDownEngine
+) : KDown {
 
   override val connectionState: StateFlow<ConnectionState> =
     MutableStateFlow(ConnectionState.Connected)
@@ -45,7 +45,7 @@ class EmbeddedKDownService(
   override suspend fun getStatus(): ServerStatus {
     val tasks = kdown.tasks.value
     return ServerStatus(
-      version = KDown.VERSION,
+      version = KDownEngine.VERSION,
       activeTasks = tasks.count { it.state.value.isActive },
       totalTasks = tasks.size
     )

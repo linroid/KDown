@@ -3,7 +3,7 @@ package com.linroid.kdown.remote
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.SpeedLimit
 import com.linroid.kdown.api.ConnectionState
-import com.linroid.kdown.api.KDownService
+import com.linroid.kdown.api.KDown
 import com.linroid.kdown.api.model.ServerStatus
 import com.linroid.kdown.api.model.TaskEvent
 import com.linroid.kdown.task.DownloadTask
@@ -38,16 +38,16 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 /**
- * Remote implementation of [KDownService] that communicates with a
+ * Remote implementation of [KDown] that communicates with a
  * KDown daemon server over HTTP + SSE.
  *
  * @param baseUrl server base URL (e.g., "http://localhost:8642")
  * @param apiToken optional Bearer token for authentication
  */
-class RemoteKDownService(
+class RemoteKDown(
   private val baseUrl: String,
   private val apiToken: String? = null
-) : KDownService {
+) : KDown {
 
   private val scope = CoroutineScope(
     SupervisorJob() + Dispatchers.Default
@@ -60,7 +60,7 @@ class RemoteKDownService(
 
   private val httpClient = HttpClient {
     install(ContentNegotiation) {
-      json(this@RemoteKDownService.json)
+      json(this@RemoteKDown.json)
     }
     install(SSE)
   }

@@ -1,7 +1,7 @@
 package com.linroid.kdown.api
 
 /**
- * Represents the connection health of a [KDownService] backend.
+ * Represents the connection health of a [KDown] backend.
  *
  * - Local backends are always [Connected].
  * - Remote backends transition between states based on SSE health.

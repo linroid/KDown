@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
  * and remote (HTTP+SSE) backends implement this interface, allowing
  * the UI to work identically regardless of backend mode.
  */
-interface KDownService {
+interface KDown {
 
   /** Connection health. Always [ConnectionState.Connected] for embedded. */
   val connectionState: StateFlow<ConnectionState>
