@@ -301,6 +301,7 @@
 					"$(inherited)",
 					"-framework",
 					KDownApp,
+					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.linroid.kdown.app.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -337,6 +338,7 @@
 					"$(inherited)",
 					"-framework",
 					KDownApp,
+					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.linroid.kdown.app.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
