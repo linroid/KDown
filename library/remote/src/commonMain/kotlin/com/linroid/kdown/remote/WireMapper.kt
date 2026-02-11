@@ -1,12 +1,12 @@
 package com.linroid.kdown.remote
 
-import com.linroid.kdown.DownloadPriority
-import com.linroid.kdown.DownloadProgress
-import com.linroid.kdown.DownloadRequest
-import com.linroid.kdown.DownloadState
-import com.linroid.kdown.SpeedLimit
-import com.linroid.kdown.error.KDownError
-import com.linroid.kdown.segment.Segment
+import com.linroid.kdown.api.DownloadPriority
+import com.linroid.kdown.api.DownloadProgress
+import com.linroid.kdown.api.DownloadRequest
+import com.linroid.kdown.api.DownloadState
+import com.linroid.kdown.api.KDownError
+import com.linroid.kdown.api.Segment
+import com.linroid.kdown.api.SpeedLimit
 import kotlinx.io.files.Path
 import kotlin.time.Instant
 

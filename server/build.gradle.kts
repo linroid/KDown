@@ -9,7 +9,7 @@ application {
 }
 
 dependencies {
-  api(projects.library.embedded)
+  api(projects.library.core)
   implementation(projects.library.ktor)
   implementation(projects.library.sqlite)
 

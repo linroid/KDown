@@ -1,9 +1,10 @@
 package com.linroid.kdown.remote
 
-import com.linroid.kdown.DownloadRequest
-import com.linroid.kdown.SpeedLimit
-import com.linroid.kdown.api.KDown
-import com.linroid.kdown.task.DownloadTask
+import com.linroid.kdown.api.DownloadRequest
+import com.linroid.kdown.api.DownloadTask
+import com.linroid.kdown.api.KDownApi
+import com.linroid.kdown.api.KDownVersion
+import com.linroid.kdown.api.SpeedLimit
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.sse.SSE
@@ -32,7 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 /**
- * Remote implementation of [KDown] that communicates with a
+ * Remote implementation of [KDownApi] that communicates with a
  * KDown daemon server over HTTP + SSE.
  *
  * @param baseUrl server base URL (e.g., "http://localhost:8642")
@@ -41,7 +42,7 @@ import kotlinx.serialization.json.Json
 class RemoteKDown(
   private val baseUrl: String,
   private val apiToken: String? = null
-) : KDown {
+) : KDownApi {
 
   private val scope = CoroutineScope(
     SupervisorJob() + Dispatchers.Default
@@ -62,12 +63,18 @@ class RemoteKDown(
   private val _connectionState = MutableStateFlow<ConnectionState>(
     ConnectionState.Connecting
   )
-  val connectionState: StateFlow<ConnectionState> =
-    _connectionState.asStateFlow()
+
+  private val _version = MutableStateFlow(KDownVersion(KDownVersion.DEFAULT, "unknown"))
+
+  override val version: StateFlow<KDownVersion> = _version.asStateFlow()
+
+  val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
   override val backendLabel: String =
-    "Remote · ${baseUrl.removePrefix("http://")
-      .removePrefix("https://")}"
+    "Remote · ${
+      baseUrl.removePrefix("http://")
+        .removePrefix("https://")
+    }"
 
   private val taskMap = mutableMapOf<String, RemoteDownloadTask>()
 
@@ -90,9 +97,11 @@ class RemoteKDown(
     val response = httpClient.post("$baseUrl/api/downloads") {
       applyAuth()
       contentType(ContentType.Application.Json)
-      setBody(json.encodeToString(
-        WireCreateDownloadRequest.serializer(), wireRequest
-      ))
+      setBody(
+        json.encodeToString(
+          WireCreateDownloadRequest.serializer(), wireRequest
+        )
+      )
     }
     checkSuccess(response)
     val wire: WireTaskResponse = json.decodeFromString(
@@ -107,10 +116,12 @@ class RemoteKDown(
     val response = httpClient.put("$baseUrl/api/speed-limit") {
       applyAuth()
       contentType(ContentType.Application.Json)
-      setBody(json.encodeToString(
-        WireSpeedLimitBody.serializer(),
-        WireSpeedLimitBody(limit.bytesPerSecond)
-      ))
+      setBody(
+        json.encodeToString(
+          WireSpeedLimitBody.serializer(),
+          WireSpeedLimitBody(limit.bytesPerSecond)
+        )
+      )
     }
     checkSuccess(response)
   }
@@ -193,12 +204,14 @@ class RemoteKDown(
           // Task may already be gone
         }
       }
+
       "task_removed" -> {
         taskMap.remove(event.taskId)
         _tasks.value = _tasks.value.filter {
           it.taskId != event.taskId
         }
       }
+
       "state_changed", "progress" -> {
         val task = taskMap[event.taskId] ?: return
         val newState = WireMapper.toDownloadState(
@@ -237,7 +250,7 @@ class RemoteKDown(
 
   private fun addTask(task: RemoteDownloadTask) {
     taskMap[task.taskId] = task
-    _tasks.value = _tasks.value + task
+    _tasks.value += task
   }
 
   private fun io.ktor.client.request.HttpRequestBuilder.applyAuth() {

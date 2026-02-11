@@ -1,14 +1,14 @@
 package com.linroid.kdown.examples
 
-import com.linroid.kdown.DownloadConfig
-import com.linroid.kdown.DownloadPriority
-import com.linroid.kdown.DownloadRequest
-import com.linroid.kdown.DownloadState
-import com.linroid.kdown.KDown
-import com.linroid.kdown.QueueConfig
-import com.linroid.kdown.SpeedLimit
+import com.linroid.kdown.api.DownloadPriority
+import com.linroid.kdown.api.DownloadRequest
+import com.linroid.kdown.api.DownloadState
+import com.linroid.kdown.api.DownloadTask
+import com.linroid.kdown.api.SpeedLimit
+import com.linroid.kdown.core.DownloadConfig
+import com.linroid.kdown.core.KDown
+import com.linroid.kdown.core.QueueConfig
 import com.linroid.kdown.engine.KtorHttpEngine
-import com.linroid.kdown.task.DownloadTask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking

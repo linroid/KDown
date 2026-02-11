@@ -29,7 +29,7 @@ kotlin {
 
   sourceSets {
     commonMain.dependencies {
-      api(projects.library.embedded)
+      api(projects.library.core)
       implementation(libs.ktor.client.core)
     }
     androidMain.dependencies {

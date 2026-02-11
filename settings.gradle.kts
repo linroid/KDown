@@ -33,7 +33,7 @@ plugins {
 }
 
 // Library modules
-include(":library:embedded")
+include(":library:core")
 include(":library:api")
 include(":library:remote")
 include(":library:ktor")

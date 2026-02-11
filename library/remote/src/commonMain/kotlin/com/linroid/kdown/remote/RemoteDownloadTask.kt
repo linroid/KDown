@@ -1,14 +1,14 @@
 package com.linroid.kdown.remote
 
-import com.linroid.kdown.DownloadCondition
-import com.linroid.kdown.DownloadPriority
-import com.linroid.kdown.DownloadRequest
-import com.linroid.kdown.DownloadSchedule
-import com.linroid.kdown.DownloadState
-import com.linroid.kdown.SpeedLimit
-import com.linroid.kdown.error.KDownError
-import com.linroid.kdown.segment.Segment
-import com.linroid.kdown.task.DownloadTask
+import com.linroid.kdown.api.DownloadCondition
+import com.linroid.kdown.api.DownloadPriority
+import com.linroid.kdown.api.DownloadRequest
+import com.linroid.kdown.api.DownloadSchedule
+import com.linroid.kdown.api.DownloadState
+import com.linroid.kdown.api.DownloadTask
+import com.linroid.kdown.api.KDownError
+import com.linroid.kdown.api.Segment
+import com.linroid.kdown.api.SpeedLimit
 import io.ktor.client.HttpClient
 import io.ktor.client.request.delete
 import io.ktor.client.request.header

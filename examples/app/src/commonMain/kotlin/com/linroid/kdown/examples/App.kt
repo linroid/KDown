@@ -57,16 +57,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.linroid.kdown.DownloadConfig
-import com.linroid.kdown.DownloadPriority
-import com.linroid.kdown.DownloadRequest
-import com.linroid.kdown.DownloadState
-import com.linroid.kdown.KDown
-import com.linroid.kdown.QueueConfig
-import com.linroid.kdown.SpeedLimit
+import com.linroid.kdown.api.DownloadPriority
+import com.linroid.kdown.api.DownloadRequest
+import com.linroid.kdown.api.DownloadState
+import com.linroid.kdown.api.DownloadTask
+import com.linroid.kdown.api.KDownApi
+import com.linroid.kdown.api.SpeedLimit
+import com.linroid.kdown.core.DownloadConfig
+import com.linroid.kdown.core.KDown
+import com.linroid.kdown.core.QueueConfig
+import com.linroid.kdown.core.log.Logger
 import com.linroid.kdown.engine.KtorHttpEngine
-import com.linroid.kdown.log.Logger
-import com.linroid.kdown.task.DownloadTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
@@ -110,6 +111,8 @@ fun App() {
     tasks.sortedByDescending { it.createdAt }
   }
 
+  val version by kdown.version.collectAsState()
+
   MaterialTheme {
     Scaffold(
       topBar = {
@@ -121,7 +124,7 @@ fun App() {
                 fontWeight = FontWeight.SemiBold
               )
               Text(
-                text = "v${KDown.VERSION} \u00b7 Downloader",
+                text = "v${version.backend} \u00b7 Downloader",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
               )
@@ -484,6 +487,7 @@ private fun DownloadTaskItem(
           )
           SpeedLimitSlider(task = task, scope = scope)
         }
+
         is DownloadState.Scheduled -> {
           Text(
             text = "Scheduled \u2014 waiting for start time\u2026",
@@ -491,6 +495,7 @@ private fun DownloadTaskItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
+
         is DownloadState.Queued -> {
           Text(
             text = "Queued \u2014 waiting for download slot\u2026",
@@ -499,6 +504,7 @@ private fun DownloadTaskItem(
           )
           PrioritySelector(task = task, scope = scope)
         }
+
         is DownloadState.Pending -> {
           LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
           Text(
@@ -507,6 +513,7 @@ private fun DownloadTaskItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
+
         is DownloadState.Paused -> {
           val progress = s.progress
           if (progress.totalBytes > 0) {
@@ -534,6 +541,7 @@ private fun DownloadTaskItem(
             )
           }
         }
+
         is DownloadState.Completed -> {
           Text(
             text = "Download complete",
@@ -541,6 +549,7 @@ private fun DownloadTaskItem(
             color = MaterialTheme.colorScheme.tertiary
           )
         }
+
         is DownloadState.Failed -> {
           Text(
             text = "Failed: ${s.error.message}",
@@ -550,6 +559,7 @@ private fun DownloadTaskItem(
             overflow = TextOverflow.Ellipsis
           )
         }
+
         is DownloadState.Canceled -> {
           Text(
             text = "Canceled",
@@ -557,6 +567,7 @@ private fun DownloadTaskItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
+
         is DownloadState.Idle -> {
           Text(
             text = "Waiting",
@@ -583,20 +594,26 @@ private fun PriorityBadge(priority: DownloadPriority) {
   val color = when (priority) {
     DownloadPriority.LOW ->
       MaterialTheme.colorScheme.surfaceVariant
+
     DownloadPriority.NORMAL ->
       MaterialTheme.colorScheme.secondaryContainer
+
     DownloadPriority.HIGH ->
       MaterialTheme.colorScheme.tertiaryContainer
+
     DownloadPriority.URGENT ->
       MaterialTheme.colorScheme.errorContainer
   }
   val textColor = when (priority) {
     DownloadPriority.LOW ->
       MaterialTheme.colorScheme.onSurfaceVariant
+
     DownloadPriority.NORMAL ->
       MaterialTheme.colorScheme.onSecondaryContainer
+
     DownloadPriority.HIGH ->
       MaterialTheme.colorScheme.onTertiaryContainer
+
     DownloadPriority.URGENT ->
       MaterialTheme.colorScheme.onErrorContainer
   }
@@ -657,8 +674,10 @@ private fun SpeedLimitSlider(
   scope: CoroutineScope
 ) {
   // Slider steps: 0=Unlimited, 1=512KB, 2=1MB, 3=2MB, 4=5MB, 5=10MB
-  val steps = listOf(0L, 512 * 1024L, 1_048_576L, 2_097_152L,
-    5_242_880L, 10_485_760L)
+  val steps = listOf(
+    0L, 512 * 1024L, 1_048_576L, 2_097_152L,
+    5_242_880L, 10_485_760L
+  )
   val initial = task.request.speedLimit.bytesPerSecond
   val initialIndex = steps.indexOfLast { it <= initial }
     .coerceAtLeast(0).toFloat()
@@ -681,7 +700,7 @@ private fun SpeedLimitSlider(
           val idx = sliderValue.toInt().coerceIn(0, steps.lastIndex)
           val bps = steps[idx]
           val limit = if (bps == 0L) SpeedLimit.Unlimited
-            else SpeedLimit.of(bps)
+          else SpeedLimit.of(bps)
           scope.launch { task.setSpeedLimit(limit) }
         },
         valueRange = 0f..steps.lastIndex.toFloat(),
@@ -691,7 +710,7 @@ private fun SpeedLimitSlider(
       val idx = sliderValue.toInt().coerceIn(0, steps.lastIndex)
       Text(
         text = if (steps[idx] == 0L) "Unlimited"
-          else "${formatBytes(steps[idx])}/s",
+        else "${formatBytes(steps[idx])}/s",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
       )
@@ -704,6 +723,7 @@ private fun StatusIndicator(state: DownloadState) {
   val bgColor = when (state) {
     is DownloadState.Downloading,
     is DownloadState.Pending -> MaterialTheme.colorScheme.primaryContainer
+
     is DownloadState.Completed -> MaterialTheme.colorScheme.tertiaryContainer
     is DownloadState.Failed -> MaterialTheme.colorScheme.errorContainer
     is DownloadState.Paused -> MaterialTheme.colorScheme.secondaryContainer
@@ -712,11 +732,14 @@ private fun StatusIndicator(state: DownloadState) {
   val fgColor = when (state) {
     is DownloadState.Downloading,
     is DownloadState.Pending -> MaterialTheme.colorScheme.onPrimaryContainer
+
     is DownloadState.Completed ->
       MaterialTheme.colorScheme.onTertiaryContainer
+
     is DownloadState.Failed -> MaterialTheme.colorScheme.onErrorContainer
     is DownloadState.Paused ->
       MaterialTheme.colorScheme.onSecondaryContainer
+
     else -> MaterialTheme.colorScheme.onSurfaceVariant
   }
   val label = when (state) {
@@ -774,6 +797,7 @@ private fun TaskActionButtons(
           Icon(Icons.Filled.Close, contentDescription = "Cancel")
         }
       }
+
       is DownloadState.Paused -> {
         FilledTonalIconButton(onClick = onResume) {
           Icon(
@@ -798,6 +822,7 @@ private fun TaskActionButtons(
           Icon(Icons.Filled.Delete, contentDescription = "Remove")
         }
       }
+
       is DownloadState.Completed -> {
         IconButton(
           onClick = onRemove,
@@ -808,6 +833,7 @@ private fun TaskActionButtons(
           Icon(Icons.Filled.Delete, contentDescription = "Remove")
         }
       }
+
       is DownloadState.Failed,
       is DownloadState.Canceled -> {
         FilledTonalIconButton(onClick = onRetry) {
@@ -822,6 +848,7 @@ private fun TaskActionButtons(
           Icon(Icons.Filled.Delete, contentDescription = "Remove")
         }
       }
+
       is DownloadState.Scheduled,
       is DownloadState.Queued -> {
         IconButton(
@@ -833,6 +860,7 @@ private fun TaskActionButtons(
           Icon(Icons.Filled.Close, contentDescription = "Cancel")
         }
       }
+
       is DownloadState.Idle -> {}
     }
   }
@@ -849,7 +877,7 @@ private fun extractFilename(url: String): String {
 
 private fun startDownload(
   scope: CoroutineScope,
-  kdown: KDown,
+  kdown: KDownApi,
   url: String,
   directory: Path,
   fileName: String?,
@@ -894,14 +922,18 @@ private fun formatBytes(bytes: Long): String {
       val tenths = (bytes * 10 + kb / 2) / kb
       "${tenths / 10}.${tenths % 10} KB"
     }
+
     bytes < gb -> {
       val tenths = (bytes * 10 + mb / 2) / mb
       "${tenths / 10}.${tenths % 10} MB"
     }
+
     else -> {
       val hundredths = (bytes * 100 + gb / 2) / gb
-      "${hundredths / 100}.${(hundredths % 100)
-        .toString().padStart(2, '0')} GB"
+      "${hundredths / 100}.${
+        (hundredths % 100)
+          .toString().padStart(2, '0')
+      } GB"
     }
   }
 }
