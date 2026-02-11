@@ -2,9 +2,7 @@ package com.linroid.kdown.remote
 
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.SpeedLimit
-import com.linroid.kdown.api.ConnectionState
 import com.linroid.kdown.api.KDown
-import com.linroid.kdown.api.model.ServerStatus
 import com.linroid.kdown.task.DownloadTask
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -64,7 +62,7 @@ class RemoteKDown(
   private val _connectionState = MutableStateFlow<ConnectionState>(
     ConnectionState.Connecting
   )
-  override val connectionState: StateFlow<ConnectionState> =
+  val connectionState: StateFlow<ConnectionState> =
     _connectionState.asStateFlow()
 
   override val backendLabel: String =
@@ -115,14 +113,6 @@ class RemoteKDown(
       ))
     }
     checkSuccess(response)
-  }
-
-  override suspend fun getStatus(): ServerStatus {
-    val response = httpClient.get("$baseUrl/api/status") {
-      applyAuth()
-    }
-    checkSuccess(response)
-    return json.decodeFromString(response.bodyAsText())
   }
 
   override fun close() {

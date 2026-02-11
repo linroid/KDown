@@ -2,7 +2,6 @@ package com.linroid.kdown.api
 
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.SpeedLimit
-import com.linroid.kdown.api.model.ServerStatus
 import com.linroid.kdown.task.DownloadTask
 import kotlinx.coroutines.flow.StateFlow
 
@@ -12,9 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
  * the UI to work identically regardless of backend mode.
  */
 interface KDown {
-
-  /** Connection health. Always [ConnectionState.Connected] for embedded. */
-  val connectionState: StateFlow<ConnectionState>
 
   /** Human-readable label: "Embedded" or "Remote · host:port". */
   val backendLabel: String
@@ -27,9 +23,6 @@ interface KDown {
 
   /** Set global speed limit (use [SpeedLimit.Unlimited] to remove). */
   suspend fun setGlobalSpeedLimit(limit: SpeedLimit)
-
-  /** Get server/engine status. */
-  suspend fun getStatus(): ServerStatus
 
   /** Release resources (HTTP client, SSE connection, etc.). */
   fun close()

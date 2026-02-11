@@ -3,11 +3,8 @@ package com.linroid.kdown.embedded
 import com.linroid.kdown.DownloadRequest
 import com.linroid.kdown.KDown as KDownEngine
 import com.linroid.kdown.SpeedLimit
-import com.linroid.kdown.api.ConnectionState
 import com.linroid.kdown.api.KDown
-import com.linroid.kdown.api.model.ServerStatus
 import com.linroid.kdown.task.DownloadTask
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -17,9 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 class EmbeddedKDown(
   private val kdown: KDownEngine
 ) : KDown {
-
-  override val connectionState: StateFlow<ConnectionState> =
-    MutableStateFlow(ConnectionState.Connected)
 
   override val backendLabel: String = "Embedded"
 
@@ -33,15 +27,6 @@ class EmbeddedKDown(
 
   override suspend fun setGlobalSpeedLimit(limit: SpeedLimit) {
     kdown.setSpeedLimit(limit)
-  }
-
-  override suspend fun getStatus(): ServerStatus {
-    val tasks = kdown.tasks.value
-    return ServerStatus(
-      version = KDownEngine.VERSION,
-      activeTasks = tasks.count { it.state.value.isActive },
-      totalTasks = tasks.size
-    )
   }
 
   override fun close() {
