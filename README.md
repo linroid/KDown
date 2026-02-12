@@ -20,28 +20,28 @@ A full-featured Kotlin Multiplatform download manager — run locally, remotely,
 
 ## Features
 
-- **Multi-platform** `✅ Available` -- Android, iOS, JVM/Desktop, and WebAssembly (WasmJs)
-- **Segmented downloads** `✅ Available` -- Split files into N concurrent segments using HTTP Range requests
-- **Pause / Resume** `✅ Available` -- True resume using byte ranges, with ETag/Last-Modified validation
-- **Queue management** `✅ Available` -- Priority-based queue with configurable concurrency limits and per-host throttling
-- **Speed limiting** `✅ Available` -- Global and per-task bandwidth throttling via token-bucket algorithm
-- **Scheduling** `✅ Available` -- Start downloads at a specific time, after a delay, or when conditions are met
-- **Download conditions** `✅ Available` -- User-defined conditions (e.g., WiFi-only) that gate download start
-- **Pluggable sources** `✅ Available` -- Extensible `DownloadSource` interface for custom protocols (HTTP built-in)
-- **Persistent resume** `✅ Available` -- Task metadata survives app restarts via pluggable `TaskStore`
-- **Progress tracking** `✅ Available` -- Aggregated progress across segments via `StateFlow`, with download speed
-- **Retry with backoff** `✅ Available` -- Configurable exponential backoff for transient errors
-- **Daemon server** `✅ Available` -- Run KDown as a background service with REST API and SSE events
-- **Remote control** `✅ Available` -- Control a daemon server from any client via `RemoteKDown`
-- **Pluggable HTTP engine** `✅ Available` -- Ships with Ktor; bring your own `HttpEngine` if needed
-- **FTP/FTPS** `🔮 Planned` -- FTP/FTPS protocol as a pluggable download source
-- **BitTorrent** `🔮 Planned` -- Segmented piece downloading and peer-to-peer transfers
-- **Magnet links** `🔮 Planned` -- Magnet URI scheme with DHT/tracker-based metadata resolution
-- **HLS streaming** `🔮 Planned` -- Download and merge `.m3u8` playlist segments
-- **Resource sniffer** `🔮 Planned` -- Detect downloadable resources from web pages
-- **Media downloads** `🔮 Planned` -- Web media extraction (like yt-dlp) with pluggable extractors
-- **Browser extension** `🔮 Planned` -- Intercept and manage downloads via the daemon server
-- **AI integration** `🔮 Planned` -- MCP server for AI agent tool access and skill-based automation
+- **Multi-platform** `✅` -- Android, iOS, JVM/Desktop, and WebAssembly (WasmJs)
+- **Segmented downloads** `✅` -- Split files into N concurrent segments using HTTP Range requests
+- **Pause / Resume** `✅` -- True resume using byte ranges, with ETag/Last-Modified validation
+- **Queue management** `✅` -- Priority-based queue with configurable concurrency limits and per-host throttling
+- **Speed limiting** `✅` -- Global and per-task bandwidth throttling via token-bucket algorithm
+- **Scheduling** `✅` -- Start downloads at a specific time, after a delay, or when conditions are met
+- **Download conditions** `✅` -- User-defined conditions (e.g., WiFi-only) that gate download start
+- **Pluggable sources** `✅` -- Extensible `DownloadSource` interface for custom protocols (HTTP built-in)
+- **Persistent resume** `✅` -- Task metadata survives app restarts via pluggable `TaskStore`
+- **Progress tracking** `✅` -- Aggregated progress across segments via `StateFlow`, with download speed
+- **Retry with backoff** `✅` -- Configurable exponential backoff for transient errors
+- **Daemon server** `✅` -- Run KDown as a background service with REST API and SSE events
+- **Remote control** `✅` -- Control a daemon server from any client via `RemoteKDown`
+- **Pluggable HTTP engine** `✅` -- Ships with Ktor; bring your own `HttpEngine` if needed
+- **FTP/FTPS** `🔜 Planned` -- FTP/FTPS protocol as a pluggable download source
+- **BitTorrent** `🔜 Planned` -- Segmented piece downloading and peer-to-peer transfers
+- **Magnet links** `🔜 Planned` -- Magnet URI scheme with DHT/tracker-based metadata resolution
+- **HLS streaming** `🔜 Planned` -- Download and merge `.m3u8` playlist segments
+- **Resource sniffer** `🔜 Planned` -- Detect downloadable resources from web pages
+- **Media downloads** `🔜 Planned` -- Web media extraction (like yt-dlp) with pluggable extractors
+- **Browser extension** `🔜 Planned` -- Intercept and manage downloads via the daemon server
+- **AI integration** `🔜 Planned` -- MCP server for AI agent tool access and skill-based automation
 
 ## Quick Start
 
