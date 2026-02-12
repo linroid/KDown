@@ -21,7 +21,7 @@ import kotlinx.io.files.Path
 import java.io.File
 
 fun main(args: Array<String>) {
-  println("KDown CLI Example - Version ${KDown.VERSION}")
+  println("KDown CLI - Version ${KDown.VERSION}")
   println()
 
   if (args.isEmpty()) {
@@ -432,7 +432,7 @@ private fun runServer(args: Array<String>) {
  */
 private fun runQueueDemo(urls: List<String>) {
   val demoUrls = urls.ifEmpty {
-    println("Usage: kdown-cli --queue-demo <url1> <url2> ...")
+    println("Usage: kdown --queue-demo <url1> <url2> ...")
     println()
     println(
       "Provide 4+ URLs to see queue behavior. " +
@@ -559,9 +559,9 @@ private fun extractFilename(url: String): String {
 }
 
 private fun printUsage() {
-  println("Usage: kdown-cli [options] <url> [destination]")
-  println("       kdown-cli --queue-demo <url1> <url2> ...")
-  println("       kdown-cli server [options]")
+  println("Usage: kdown [options] <url> [destination]")
+  println("       kdown --queue-demo <url1> <url2> ...")
+  println("       kdown server [options]")
   println()
   println("Options:")
   println("  --speed-limit <value>    Limit download speed")
@@ -579,19 +579,19 @@ private fun printUsage() {
   println()
   println("Server:")
   println("  server [options]         Start KDown daemon server")
-  println("                           Run `kdown-cli server --help`")
+  println("                           Run `kdown server --help`")
   println("                           for server options")
   println()
   println("Examples:")
-  println("  kdown-cli https://example.com/file.zip")
-  println("  kdown-cli --priority high https://example.com/file.zip")
-  println("  kdown-cli --max-concurrent 2 https://example.com/file.zip")
-  println("  kdown-cli --queue-demo url1 url2 url3 url4")
-  println("  kdown-cli server --port 9000 --dir /tmp/downloads")
+  println("  kdown https://example.com/file.zip")
+  println("  kdown --priority high https://example.com/file.zip")
+  println("  kdown --max-concurrent 2 https://example.com/file.zip")
+  println("  kdown --queue-demo url1 url2 url3 url4")
+  println("  kdown server --port 9000 --dir /tmp/downloads")
 }
 
 private fun printServerUsage() {
-  println("Usage: kdown-cli server [options]")
+  println("Usage: kdown server [options]")
   println()
   println("Options:")
   println("  --config <path>        Path to TOML config file")
@@ -613,12 +613,12 @@ private fun printServerUsage() {
   println("  Use --generate-config to create a default file.")
   println()
   println("Examples:")
-  println("  kdown-cli server")
-  println("  kdown-cli server --port 9000 --dir /tmp/downloads")
-  println("  kdown-cli server --token my-secret --cors '*'")
-  println("  kdown-cli server --speed-limit 10m")
-  println("  kdown-cli server --config /path/to/config.toml")
-  println("  kdown-cli server --generate-config")
+  println("  kdown server")
+  println("  kdown server --port 9000 --dir /tmp/downloads")
+  println("  kdown server --token my-secret --cors '*'")
+  println("  kdown server --speed-limit 10m")
+  println("  kdown server --config /path/to/config.toml")
+  println("  kdown server --generate-config")
 }
 
 private fun defaultDbPath(): String {
