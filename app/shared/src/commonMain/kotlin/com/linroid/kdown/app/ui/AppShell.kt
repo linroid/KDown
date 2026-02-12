@@ -340,11 +340,13 @@ fun AppShell(backendManager: BackendManager) {
   if (appState.showAddDialog) {
     AddDownloadDialog(
       onDismiss = { appState.showAddDialog = false },
-      onDownload = { url, fileName, speedLimit, priority ->
+      onDownload = { url, fileName, speedLimit,
+                     priority, schedule ->
         appState.showAddDialog = false
         appState.dismissError()
         appState.startDownload(
-          url, fileName, speedLimit, priority
+          url, fileName, speedLimit, priority,
+          schedule
         )
       }
     )

@@ -1,39 +1,44 @@
 package com.linroid.kdown.app.ui.dialog
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import com.linroid.kdown.api.DownloadPriority
+import com.linroid.kdown.api.DownloadSchedule
 import com.linroid.kdown.api.SpeedLimit
+import com.linroid.kdown.app.ui.common.PriorityIcon
+import com.linroid.kdown.app.ui.common.PrioritySelector
+import com.linroid.kdown.app.ui.common.ScheduleIcon
+import com.linroid.kdown.app.ui.common.ScheduleSelector
+import com.linroid.kdown.app.ui.common.SpeedLimitIcon
+import com.linroid.kdown.app.ui.common.SpeedLimitSelector
 import com.linroid.kdown.app.util.extractFilename
-import com.linroid.kdown.app.util.priorityLabel
 
-private data class SpeedOption(
-  val label: String,
-  val limit: SpeedLimit
-)
-
-private val speedOptions = listOf(
-  SpeedOption("Unlimited", SpeedLimit.Unlimited),
-  SpeedOption("1 MB/s", SpeedLimit.mbps(1)),
-  SpeedOption("5 MB/s", SpeedLimit.mbps(5)),
-  SpeedOption("10 MB/s", SpeedLimit.mbps(10))
-)
+private enum class DialogPanel {
+  None, SpeedLimit, Priority, Schedule
+}
 
 @Composable
 fun AddDownloadDialog(
@@ -42,7 +47,8 @@ fun AddDownloadDialog(
     url: String,
     fileName: String,
     SpeedLimit,
-    DownloadPriority
+    DownloadPriority,
+    DownloadSchedule
   ) -> Unit
 ) {
   var url by remember { mutableStateOf("") }
@@ -53,6 +59,17 @@ fun AddDownloadDialog(
   var selectedPriority by remember {
     mutableStateOf(DownloadPriority.NORMAL)
   }
+  var selectedSchedule by remember {
+    mutableStateOf<DownloadSchedule>(
+      DownloadSchedule.Immediate
+    )
+  }
+  var expanded by remember {
+    mutableStateOf(DialogPanel.None)
+  }
+  val urlFocusRequester = remember {
+    FocusRequester()
+  }
   val isValidUrl = url.isBlank() ||
     url.trim().startsWith("http://") ||
     url.trim().startsWith("https://")
@@ -62,15 +79,20 @@ fun AddDownloadDialog(
     title = { Text("Add download") },
     text = {
       Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement =
+          Arrangement.spacedBy(12.dp)
       ) {
+        LaunchedEffect(Unit) {
+          urlFocusRequester.requestFocus()
+        }
         OutlinedTextField(
           value = url,
           onValueChange = {
             url = it
             fileName = extractFilename(it)
           },
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth()
+            .focusRequester(urlFocusRequester),
           label = { Text("URL") },
           singleLine = true,
           placeholder = {
@@ -105,44 +127,90 @@ fun AddDownloadDialog(
             null
           }
         )
-        Text(
-          text = "Priority",
-          style = MaterialTheme.typography.labelMedium,
-          color =
-            MaterialTheme.colorScheme.onSurfaceVariant
-        )
+
+        // Toggle icon row
         Row(
           horizontalArrangement =
-            Arrangement.spacedBy(8.dp)
+            Arrangement.spacedBy(4.dp),
+          verticalAlignment =
+            Alignment.CenterVertically
         ) {
-          DownloadPriority.entries.forEach { priority ->
-            FilterChip(
-              selected = selectedPriority == priority,
-              onClick = { selectedPriority = priority },
-              label = {
-                Text(priorityLabel(priority))
+          SpeedLimitIcon(
+            active =
+              !selectedSpeed.isUnlimited,
+            selected =
+              expanded == DialogPanel.SpeedLimit,
+            onClick = {
+              expanded = if (expanded ==
+                DialogPanel.SpeedLimit
+              ) {
+                DialogPanel.None
+              } else {
+                DialogPanel.SpeedLimit
               }
-            )
-          }
+            }
+          )
+          PriorityIcon(
+            active = selectedPriority !=
+              DownloadPriority.NORMAL,
+            selected =
+              expanded == DialogPanel.Priority,
+            onClick = {
+              expanded = if (expanded ==
+                DialogPanel.Priority
+              ) {
+                DialogPanel.None
+              } else {
+                DialogPanel.Priority
+              }
+            }
+          )
+          ScheduleIcon(
+            selected =
+              expanded == DialogPanel.Schedule,
+            onClick = {
+              expanded = if (expanded ==
+                DialogPanel.Schedule
+              ) {
+                DialogPanel.None
+              } else {
+                DialogPanel.Schedule
+              }
+            }
+          )
         }
-        Text(
-          text = "Speed limit",
-          style = MaterialTheme.typography.labelMedium,
-          color =
-            MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Row(
-          horizontalArrangement =
-            Arrangement.spacedBy(8.dp)
-        ) {
-          speedOptions.forEach { option ->
-            FilterChip(
-              selected = selectedSpeed == option.limit,
-              onClick = {
-                selectedSpeed = option.limit
-              },
-              label = { Text(option.label) }
-            )
+
+        // Expanded panel
+        AnimatedContent(
+          targetState = expanded,
+          transitionSpec = {
+            expandVertically() togetherWith
+              shrinkVertically()
+          }
+        ) { panel ->
+          when (panel) {
+            DialogPanel.SpeedLimit ->
+              SpeedLimitSelector(
+                value = selectedSpeed,
+                onValueChange = {
+                  selectedSpeed = it
+                }
+              )
+            DialogPanel.Priority ->
+              PrioritySelector(
+                value = selectedPriority,
+                onValueChange = {
+                  selectedPriority = it
+                }
+              )
+            DialogPanel.Schedule ->
+              ScheduleSelector(
+                value = selectedSchedule,
+                onValueChange = {
+                  selectedSchedule = it
+                }
+              )
+            DialogPanel.None -> {}
           }
         }
       }
@@ -154,7 +222,8 @@ fun AddDownloadDialog(
           if (trimmed.isNotEmpty()) {
             onDownload(
               trimmed, fileName.trim(),
-              selectedSpeed, selectedPriority
+              selectedSpeed, selectedPriority,
+              selectedSchedule
             )
           }
         },
