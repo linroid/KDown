@@ -6,10 +6,11 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Android](https://img.shields.io/badge/Android-26+-3DDC84.svg?logo=android&logoColor=white)](https://developer.android.com)
 [![iOS](https://img.shields.io/badge/iOS-supported-000000.svg?logo=apple&logoColor=white)](https://developer.apple.com)
-[![JVM](https://img.shields.io/badge/JVM-11+-DB380E.svg?logo=openjdk&logoColor=white)](https://openjdk.org)
+[![Desktop](https://img.shields.io/badge/Desktop-JVM_11+-DB380E.svg?logo=openjdk&logoColor=white)](https://openjdk.org)
+[![Web](https://img.shields.io/badge/Web-WasmJs-E4A125.svg?logo=webassembly&logoColor=white)](https://kotlinlang.org/docs/wasm-overview.html)
 [![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-6b48ff.svg?logo=anthropic&logoColor=white)](https://claude.ai/claude-code)
 
-A full-featured Kotlin Multiplatform download manager — run locally, remotely, or embedded in your app. Supports Android, JVM, iOS, and WebAssembly.
+A full-featured Kotlin Multiplatform download manager — run locally, remotely, or embedded in your app. Supports Android, iOS, Desktop, and Web.
 
 - **Embed it** — Add downloads to your Android, iOS, or Desktop app with a simple API
 - **Run it as a daemon** — Self-hosted download server with REST API and real-time SSE events
@@ -96,10 +97,10 @@ KDown is split into published SDK modules that you add as dependencies:
 | `library:api` | Public API interfaces and models (`KDownApi`, `DownloadTask`, `DownloadState`, etc.) | All |
 | `library:core` | In-process download engine -- embed downloads directly in your app | All |
 | `library:ktor` | Ktor-based `HttpEngine` implementation (required by `core`) | All |
-| `library:sqlite` | SQLite-backed `TaskStore` for persistent resume | Android, iOS, JVM |
+| `library:sqlite` | SQLite-backed `TaskStore` for persistent resume | Android, iOS, Desktop |
 | `library:kermit` | Optional [Kermit](https://github.com/touchlab/Kermit) logging integration | All |
 | `library:remote` | Remote client -- control a KDown daemon server from any platform | All |
-| `server` | Daemon server with REST API and SSE events (not an SDK; standalone service) | JVM |
+| `server` | Daemon server with REST API and SSE events (not an SDK; standalone service) | Desktop |
 
 Choose your backend: use **`core`** for in-process downloads, or **`remote`** to control a daemon server. Both implement the same `KDownApi` interface, so your UI code works identically.
 
@@ -138,7 +139,7 @@ Ready-made `HttpEngine` backed by Ktor Client with per-platform engines:
 |---|---|
 | Android | OkHttp |
 | iOS | Darwin |
-| JVM | CIO |
+| Desktop | CIO |
 | WasmJs | Js |
 
 ## Configuration
@@ -233,7 +234,7 @@ See [LOGGING.md](LOGGING.md) for detailed documentation.
 Run KDown as a background service and control it remotely:
 
 ```kotlin
-// Server side (JVM)
+// Server side (Desktop)
 val kdown = KDown(httpEngine = KtorHttpEngine())
 val server = KDownServer(kdown)
 server.start()  // REST API + SSE on port 8642
@@ -246,7 +247,7 @@ task.state.collect { /* real-time updates via SSE */ }
 
 ## Platform Support
 
-| Feature | Android | JVM | iOS | WasmJs |
+| Feature | Android | Desktop | iOS | WasmJs |
 |---|---|---|---|---|
 | Segmented downloads | Yes | Yes | Yes | Remote only* |
 | Pause / Resume | Yes | Yes | Yes | Remote only* |
