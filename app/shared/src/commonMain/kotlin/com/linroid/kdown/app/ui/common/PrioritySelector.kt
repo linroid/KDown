@@ -51,6 +51,32 @@ fun PriorityIcon(
 }
 
 @Composable
+fun PrioritySelector(
+  value: DownloadPriority,
+  onValueChange: (DownloadPriority) -> Unit,
+  modifier: Modifier = Modifier
+) {
+  Row(
+    modifier = modifier,
+    horizontalArrangement = Arrangement.spacedBy(6.dp)
+  ) {
+    DownloadPriority.entries.forEach { priority ->
+      FilterChip(
+        selected = value == priority,
+        onClick = { onValueChange(priority) },
+        label = {
+          Text(
+            text = priorityLabel(priority),
+            style =
+              MaterialTheme.typography.labelSmall
+          )
+        }
+      )
+    }
+  }
+}
+
+@Composable
 fun PriorityPanel(
   task: DownloadTask,
   scope: CoroutineScope,
@@ -59,24 +85,12 @@ fun PriorityPanel(
   var currentPriority by remember {
     mutableStateOf(task.request.priority)
   }
-  Row(
-    modifier = modifier,
-    horizontalArrangement = Arrangement.spacedBy(6.dp)
-  ) {
-    DownloadPriority.entries.forEach { priority ->
-      FilterChip(
-        selected = currentPriority == priority,
-        onClick = {
-          currentPriority = priority
-          scope.launch { task.setPriority(priority) }
-        },
-        label = {
-          Text(
-            text = priorityLabel(priority),
-            style = MaterialTheme.typography.labelSmall
-          )
-        }
-      )
-    }
-  }
+  PrioritySelector(
+    value = currentPriority,
+    onValueChange = { priority ->
+      currentPriority = priority
+      scope.launch { task.setPriority(priority) }
+    },
+    modifier = modifier
+  )
 }

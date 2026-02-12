@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.linroid.kdown.api.DownloadPriority
 import com.linroid.kdown.api.DownloadRequest
+import com.linroid.kdown.api.DownloadSchedule
 import com.linroid.kdown.api.DownloadState
 import com.linroid.kdown.api.DownloadTask
 import com.linroid.kdown.api.KDownApi
@@ -86,7 +87,8 @@ class AppState(
     url: String,
     fileName: String,
     speedLimit: SpeedLimit,
-    priority: DownloadPriority
+    priority: DownloadPriority,
+    schedule: DownloadSchedule = DownloadSchedule.Immediate
   ) {
     scope.launch {
       runCatching {
@@ -96,7 +98,8 @@ class AppState(
           fileName = fileName.ifBlank { null },
           connections = 4,
           speedLimit = speedLimit,
-          priority = priority
+          priority = priority,
+          schedule = schedule
         )
         activeApi.value.download(request)
       }.onFailure { e ->

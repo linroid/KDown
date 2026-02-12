@@ -28,11 +28,26 @@ private data class ScheduleOption(
 
 private val scheduleOptions = listOf(
   ScheduleOption("Now", DownloadSchedule.Immediate),
-  ScheduleOption("5 min", DownloadSchedule.AfterDelay(5.minutes)),
-  ScheduleOption("15 min", DownloadSchedule.AfterDelay(15.minutes)),
-  ScheduleOption("30 min", DownloadSchedule.AfterDelay(30.minutes)),
-  ScheduleOption("1 hour", DownloadSchedule.AfterDelay(1.hours)),
-  ScheduleOption("3 hours", DownloadSchedule.AfterDelay(3.hours))
+  ScheduleOption(
+    "5 min",
+    DownloadSchedule.AfterDelay(5.minutes)
+  ),
+  ScheduleOption(
+    "15 min",
+    DownloadSchedule.AfterDelay(15.minutes)
+  ),
+  ScheduleOption(
+    "30 min",
+    DownloadSchedule.AfterDelay(30.minutes)
+  ),
+  ScheduleOption(
+    "1 hour",
+    DownloadSchedule.AfterDelay(1.hours)
+  ),
+  ScheduleOption(
+    "3 hours",
+    DownloadSchedule.AfterDelay(3.hours)
+  )
 )
 
 @Composable
@@ -61,6 +76,32 @@ fun ScheduleIcon(
 }
 
 @Composable
+fun ScheduleSelector(
+  value: DownloadSchedule,
+  onValueChange: (DownloadSchedule) -> Unit,
+  modifier: Modifier = Modifier
+) {
+  Row(
+    modifier = modifier,
+    horizontalArrangement = Arrangement.spacedBy(6.dp)
+  ) {
+    scheduleOptions.forEach { option ->
+      FilterChip(
+        selected = value == option.schedule,
+        onClick = { onValueChange(option.schedule) },
+        label = {
+          Text(
+            text = option.label,
+            style =
+              MaterialTheme.typography.labelSmall
+          )
+        }
+      )
+    }
+  }
+}
+
+@Composable
 fun SchedulePanel(
   task: DownloadTask,
   scope: CoroutineScope,
@@ -83,7 +124,8 @@ fun SchedulePanel(
         label = {
           Text(
             text = option.label,
-            style = MaterialTheme.typography.labelSmall
+            style =
+              MaterialTheme.typography.labelSmall
           )
         }
       )
