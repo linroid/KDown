@@ -4,6 +4,7 @@ plugins {
   alias(libs.plugins.kotlinJvm)
   alias(libs.plugins.composeMultiplatform)
   alias(libs.plugins.composeCompiler)
+  alias(libs.plugins.composeHotReload)
 }
 
 dependencies {
@@ -17,7 +18,7 @@ dependencies {
 
 compose.desktop {
   application {
-    mainClass = "com.linroid.kdown.app.MainKt"
+    mainClass = "com.linroid.kdown.desktop.MainKt"
 
     nativeDistributions {
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
