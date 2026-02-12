@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -27,7 +26,6 @@ fun TaskActionButtons(
   onResume: () -> Unit,
   onCancel: () -> Unit,
   onRetry: () -> Unit,
-  onRemove: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   Row(
@@ -64,20 +62,6 @@ fun TaskActionButtons(
           tint = MaterialTheme.colorScheme.error,
           onClick = onCancel
         )
-        ActionIcon(
-          icon = Icons.Filled.Delete,
-          description = "Remove",
-          tint = MaterialTheme.colorScheme.error,
-          onClick = onRemove
-        )
-      }
-      is DownloadState.Completed -> {
-        ActionIcon(
-          icon = Icons.Filled.Delete,
-          description = "Remove",
-          tint = MaterialTheme.colorScheme.error,
-          onClick = onRemove
-        )
       }
       is DownloadState.Failed,
       is DownloadState.Canceled -> {
@@ -87,22 +71,10 @@ fun TaskActionButtons(
           tint = MaterialTheme.colorScheme.primary,
           onClick = onRetry
         )
-        ActionIcon(
-          icon = Icons.Filled.Delete,
-          description = "Remove",
-          tint = MaterialTheme.colorScheme.error,
-          onClick = onRemove
-        )
       }
+      is DownloadState.Completed,
       is DownloadState.Scheduled,
-      is DownloadState.Queued -> {
-        ActionIcon(
-          icon = Icons.Filled.Close,
-          description = "Cancel",
-          tint = MaterialTheme.colorScheme.error,
-          onClick = onCancel
-        )
-      }
+      is DownloadState.Queued,
       is DownloadState.Idle -> {}
     }
   }
