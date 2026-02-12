@@ -20,6 +20,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -61,17 +62,15 @@ fun AppShell(backendManager: BackendManager) {
     appState.serverState.collectAsState()
 
   // Collect all task states for filtering/counts
-  val taskStates = remember {
-    mutableMapOf<String, DownloadState>()
-  }
+  val taskStates = remember { mutableStateMapOf<String, DownloadState>() }
+  val currentTaskIds = sortedTasks.map { it.taskId }.toSet()
+  taskStates.keys.removeAll { it !in currentTaskIds }
   sortedTasks.forEach { task ->
     val state by task.state.collectAsState()
     taskStates[task.taskId] = state
   }
 
-  val filteredTasks by remember(
-    sortedTasks, appState.statusFilter
-  ) {
+  val filteredTasks by remember {
     derivedStateOf {
       if (appState.statusFilter == StatusFilter.All) {
         sortedTasks
@@ -85,22 +84,20 @@ fun AppShell(backendManager: BackendManager) {
     }
   }
 
-  val taskCounts by remember(sortedTasks, taskStates) {
+  val taskCounts by remember {
     derivedStateOf {
       StatusFilter.entries.associateWith { filter ->
-        countTasksByFilter(
-          filter, taskStates, sortedTasks.size
-        )
+        countTasksByFilter(filter, taskStates)
       }
     }
   }
 
-  val hasActive by remember(taskStates) {
+  val hasActive by remember {
     derivedStateOf {
       taskStates.values.any { it.isActive }
     }
   }
-  val hasPaused by remember(taskStates) {
+  val hasPaused by remember {
     derivedStateOf {
       taskStates.values.any {
         it is DownloadState.Paused

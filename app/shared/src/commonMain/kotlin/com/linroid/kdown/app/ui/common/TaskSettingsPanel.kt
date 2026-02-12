@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,6 +21,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.linroid.kdown.api.DownloadTask
@@ -67,7 +70,7 @@ fun TaskSettingsPanel(
       modifier = Modifier.padding(12.dp),
       verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-      InfoRow("URL", task.request.url)
+      CopyableInfoRow("URL", task.request.url)
       if (task.request.directory != null) {
         InfoRow("Directory", task.request.directory!!)
       }
@@ -96,6 +99,48 @@ fun TaskSettingsPanel(
         else "${formatBytes(limit.bytesPerSecond)}/s"
       )
       InfoRow("Task ID", task.taskId)
+    }
+  }
+}
+
+@Composable
+private fun CopyableInfoRow(
+  label: String,
+  value: String,
+  modifier: Modifier = Modifier
+) {
+  val clipboardManager = LocalClipboardManager.current
+  Row(
+    modifier = modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Text(
+      text = label,
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.weight(0.3f)
+    )
+    Text(
+      text = value,
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.onSurface,
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+      modifier = Modifier.weight(0.7f)
+    )
+    IconButton(
+      onClick = {
+        clipboardManager.setText(AnnotatedString(value))
+      },
+      modifier = Modifier.size(24.dp)
+    ) {
+      Icon(
+        Icons.Filled.ContentCopy,
+        contentDescription = "Copy",
+        modifier = Modifier.size(14.dp),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant
+      )
     }
   }
 }

@@ -57,9 +57,8 @@ fun FilterBar(
 
 fun countTasksByFilter(
   filter: StatusFilter,
-  states: Map<String, DownloadState>,
-  totalCount: Int
+  states: Map<String, DownloadState>
 ): Int {
-  if (filter == StatusFilter.All) return totalCount
+  if (filter == StatusFilter.All) return states.size
   return states.values.count { filter.matches(it) }
 }

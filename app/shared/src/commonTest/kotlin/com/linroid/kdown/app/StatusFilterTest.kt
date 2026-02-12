@@ -116,8 +116,8 @@ class StatusFilterTest {
   }
 
   @Test
-  fun downloading_rejectsIdle() {
-    assertFalse(
+  fun downloading_matchesIdleState() {
+    assertTrue(
       StatusFilter.Downloading.matches(DownloadState.Idle)
     )
   }
@@ -338,7 +338,7 @@ class StatusFilterTest {
 
   // -----------------------------------------------------------
   // Cross-filter coverage: each state matched by exactly one
-  // non-All filter (except Idle which only matches All)
+  // non-All filter
   // -----------------------------------------------------------
 
   @Test
@@ -350,18 +350,11 @@ class StatusFilterTest {
       val matchingFilters = nonAllFilters.filter {
         it.matches(state)
       }
-      if (state is DownloadState.Idle) {
-        assertTrue(
-          matchingFilters.isEmpty(),
-          "Idle should not match any non-All filter"
-        )
-      } else {
-        assertTrue(
-          matchingFilters.size == 1,
-          "State $state should match exactly one filter, " +
-            "but matched: $matchingFilters"
-        )
-      }
+      assertTrue(
+        matchingFilters.size == 1,
+        "State $state should match exactly one filter, " +
+          "but matched: $matchingFilters"
+      )
     }
   }
 }

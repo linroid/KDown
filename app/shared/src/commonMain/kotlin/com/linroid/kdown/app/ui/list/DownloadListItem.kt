@@ -3,7 +3,6 @@ package com.linroid.kdown.app.ui.list
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -64,24 +63,20 @@ fun DownloadListItem(
   var expanded by remember { mutableStateOf(ExpandedPanel.None) }
 
   Card(
+    onClick = {
+      scope.launch {
+        if (isDownloading) task.pause()
+        else task.resume()
+      }
+    },
+    enabled = isDownloading || isPaused,
     colors = CardDefaults.cardColors(
       containerColor =
+        MaterialTheme.colorScheme.surfaceContainer,
+      disabledContainerColor =
         MaterialTheme.colorScheme.surfaceContainer
     ),
-    modifier = modifier
-      .fillMaxWidth()
-      .then(
-        if (isDownloading || isPaused) {
-          Modifier.clickable {
-            scope.launch {
-              if (isDownloading) task.pause()
-              else task.resume()
-            }
-          }
-        } else {
-          Modifier
-        }
-      )
+    modifier = modifier.fillMaxWidth()
   ) {
     Column(
       modifier = Modifier.padding(
