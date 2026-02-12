@@ -18,22 +18,33 @@ A full-featured Kotlin Multiplatform download manager — run locally, remotely,
 
 > **WIP:** This project is under active development. APIs may change. Contributions and feedback are welcome!
 
+### Roadmap
+
+- FTP/FTPS protocol support
+- BitTorrent with segmented piece downloading and P2P transfers
+- Magnet link support with DHT/tracker-based metadata resolution
+- HLS streaming — download and merge `.m3u8` playlist segments
+- Resource sniffer — detect downloadable resources from web pages
+- Media downloads — web media extraction (like yt-dlp) with pluggable extractors
+- Browser extension for intercepting downloads via the daemon server
+- AI integration — MCP server for AI agent tool access and skill-based automation
+
 ## Features
 
-- **Multi-platform** -- Android, iOS, JVM/Desktop, and WebAssembly (WasmJs)
-- **Segmented downloads** -- Split files into N concurrent segments using HTTP Range requests
-- **Pause / Resume** -- True resume using byte ranges, with ETag/Last-Modified validation
-- **Queue management** -- Priority-based queue with configurable concurrency limits and per-host throttling
-- **Speed limiting** -- Global and per-task bandwidth throttling via token-bucket algorithm
-- **Scheduling** -- Start downloads at a specific time, after a delay, or when conditions are met
-- **Download conditions** -- User-defined conditions (e.g., WiFi-only) that gate download start
-- **Pluggable sources** -- Extensible `DownloadSource` interface for custom protocols (HTTP built-in)
-- **Persistent resume** -- Task metadata survives app restarts via pluggable `TaskStore`
-- **Progress tracking** -- Aggregated progress across segments via `StateFlow`, with download speed
-- **Retry with backoff** -- Configurable exponential backoff for transient errors
-- **Daemon server** -- Run KDown as a background service with REST API and SSE events
-- **Remote control** -- Control a daemon server from any client via `RemoteKDown`
-- **Pluggable HTTP engine** -- Ships with Ktor; bring your own `HttpEngine` if needed
+- **Multi-platform** `✅ Available` -- Android, iOS, JVM/Desktop, and WebAssembly (WasmJs)
+- **Segmented downloads** `✅ Available` -- Split files into N concurrent segments using HTTP Range requests
+- **Pause / Resume** `✅ Available` -- True resume using byte ranges, with ETag/Last-Modified validation
+- **Queue management** `✅ Available` -- Priority-based queue with configurable concurrency limits and per-host throttling
+- **Speed limiting** `✅ Available` -- Global and per-task bandwidth throttling via token-bucket algorithm
+- **Scheduling** `✅ Available` -- Start downloads at a specific time, after a delay, or when conditions are met
+- **Download conditions** `✅ Available` -- User-defined conditions (e.g., WiFi-only) that gate download start
+- **Pluggable sources** `✅ Available` -- Extensible `DownloadSource` interface for custom protocols (HTTP built-in)
+- **Persistent resume** `✅ Available` -- Task metadata survives app restarts via pluggable `TaskStore`
+- **Progress tracking** `✅ Available` -- Aggregated progress across segments via `StateFlow`, with download speed
+- **Retry with backoff** `✅ Available` -- Configurable exponential backoff for transient errors
+- **Daemon server** `✅ Available` -- Run KDown as a background service with REST API and SSE events
+- **Remote control** `✅ Available` -- Control a daemon server from any client via `RemoteKDown`
+- **Pluggable HTTP engine** `✅ Available` -- Ships with Ktor; bring your own `HttpEngine` if needed
 
 ## Quick Start
 
@@ -263,17 +274,6 @@ task.state.collect { /* real-time updates via SSE */ }
 # Run desktop app
 ./gradlew :app:desktop:run
 ```
-
-## Roadmap
-
-- **FTP Support** - FTP/FTPS protocol as a pluggable download source
-- **BitTorrent Support** - BitTorrent protocol with segmented piece downloading and P2P transfers
-- **Magnet Link Support** - Magnet URI scheme with DHT/tracker-based metadata resolution
-- **HLS Support** - HTTP Live Streaming, downloading and merging `.m3u8` playlist segments
-- **Resource Sniffer** - Detect and extract downloadable resources from web pages
-- **Media Downloads** - Web media extraction (like yt-dlp) with pluggable extractors
-- **Browser Extension** - Browser extension for intercepting and managing downloads via the daemon server
-- **AI Integration** - MCP server for AI agent tool access, skill-based automation (smart discovery, auto-categorization, intelligent scheduling)
 
 ## Contributing
 
