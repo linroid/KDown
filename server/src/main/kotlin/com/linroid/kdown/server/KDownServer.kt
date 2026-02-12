@@ -1,10 +1,10 @@
 package com.linroid.kdown.server
 
 import com.linroid.kdown.api.KDownApi
+import com.linroid.kdown.endpoints.model.ErrorResponse
 import com.linroid.kdown.server.api.downloadRoutes
 import com.linroid.kdown.server.api.eventRoutes
 import com.linroid.kdown.server.api.serverRoutes
-import com.linroid.kdown.server.model.ErrorResponse
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -21,6 +21,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
+import io.ktor.server.resources.Resources
 import io.ktor.server.response.respond
 import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
@@ -101,6 +102,8 @@ class KDownServer(
         ignoreUnknownKeys = true
       })
     }
+
+    install(Resources)
 
     install(SSE)
 

@@ -1,6 +1,6 @@
 package com.linroid.kdown.server
 
-import com.linroid.kdown.server.model.ServerStatus
+import com.linroid.kdown.endpoints.model.ServerStatus
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode

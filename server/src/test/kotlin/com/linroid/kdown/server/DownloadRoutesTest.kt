@@ -1,11 +1,11 @@
 package com.linroid.kdown.server
 
 import com.linroid.kdown.api.KDownApi
-import com.linroid.kdown.server.model.CreateDownloadRequest
-import com.linroid.kdown.server.model.ErrorResponse
-import com.linroid.kdown.server.model.PriorityRequest
-import com.linroid.kdown.server.model.SpeedLimitRequest
-import com.linroid.kdown.server.model.TaskResponse
+import com.linroid.kdown.endpoints.model.CreateDownloadRequest
+import com.linroid.kdown.endpoints.model.ErrorResponse
+import com.linroid.kdown.endpoints.model.PriorityRequest
+import com.linroid.kdown.endpoints.model.SpeedLimitRequest
+import com.linroid.kdown.endpoints.model.TaskResponse
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
