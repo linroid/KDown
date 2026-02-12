@@ -207,9 +207,9 @@ internal class DownloadScheduler(
         }
       } else if (activeEntries.containsKey(taskId)) {
         removeActive(taskId)
-        coordinator.cancel(taskId)
         KDownLogger.i("Scheduler") {
-          "Canceled active download: taskId=$taskId"
+          "Removed active download from tracking: " +
+            "taskId=$taskId"
         }
         promoteNext()
       }
