@@ -9,7 +9,12 @@
 [![JVM](https://img.shields.io/badge/JVM-11+-DB380E.svg?logo=openjdk&logoColor=white)](https://openjdk.org)
 [![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-6b48ff.svg?logo=anthropic&logoColor=white)](https://claude.ai/claude-code)
 
-A Kotlin Multiplatform download manager with segmented downloads, pause/resume, queue management, speed limiting, and scheduling -- for Android, JVM, iOS, and WebAssembly.
+A full-featured Kotlin Multiplatform download manager — run locally, remotely, or embedded in your app. Supports Android, JVM, iOS, and WebAssembly.
+
+- **Embed it** — Add downloads to your Android, iOS, or Desktop app with a simple API
+- **Run it as a daemon** — Self-hosted download server with REST API and real-time SSE events
+- **Control it remotely** — Manage a daemon from any client (mobile app, web UI, CLI, or AI agent)
+- **Extend it** — Pluggable architecture for custom protocols (FTP, BitTorrent, HLS, and more on the roadmap)
 
 > **WIP:** This project is under active development. APIs may change. Contributions and feedback are welcome!
 
@@ -258,6 +263,17 @@ task.state.collect { /* real-time updates via SSE */ }
 # Run desktop app
 ./gradlew :app:desktop:run
 ```
+
+## Roadmap
+
+- **FTP Support** - FTP/FTPS protocol as a pluggable download source
+- **BitTorrent Support** - BitTorrent protocol with segmented piece downloading and P2P transfers
+- **Magnet Link Support** - Magnet URI scheme with DHT/tracker-based metadata resolution
+- **HLS Support** - HTTP Live Streaming, downloading and merging `.m3u8` playlist segments
+- **Resource Sniffer** - Detect and extract downloadable resources from web pages
+- **Media Downloads** - Web media extraction (like yt-dlp) with pluggable extractors
+- **Browser Extension** - Browser extension for intercepting and managing downloads via the daemon server
+- **AI Integration** - MCP server for AI agent tool access, skill-based automation (smart discovery, auto-categorization, intelligent scheduling)
 
 ## Contributing
 

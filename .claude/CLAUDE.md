@@ -164,6 +164,19 @@ cli/          # JVM CLI entry point
 
 Planned features not yet implemented:
 
-1. **Web App** - Browser-based download manager UI
-2. **Torrent Support** - BitTorrent protocol as a pluggable `DownloadSource`
-3. **Media Downloads** - Web media extraction (like yt-dlp) as a pluggable `DownloadSource`
+1. **FTP Support** - FTP/FTPS protocol as a pluggable `DownloadSource`
+2. **BitTorrent Support** - BitTorrent protocol as a pluggable `DownloadSource`, with
+   segmented piece downloading and peer-to-peer transfers
+3. **Magnet Link Support** - Magnet URI scheme for starting BitTorrent downloads without
+   a .torrent file (DHT/tracker-based metadata resolution)
+4. **HLS Support** - HTTP Live Streaming (HLS) as a pluggable `DownloadSource`, downloading
+   and merging `.m3u8` playlist segments into a single media file
+5. **Resource Sniffer** - Detect and extract downloadable resources (media, files) from
+   web pages by analyzing network requests, HTML, and embedded players
+6. **Media Downloads** - Web media extraction (like yt-dlp) as a pluggable `DownloadSource`,
+   supporting various media sites and extractors
+7. **Browser Extension** - Browser extension for intercepting and managing downloads
+   directly from the browser, integrating with the KDown daemon server
+8. **AI Integration** - MCP server exposing KDown capabilities as tools for AI agents,
+   and skill-based automation (e.g., smart resource discovery, auto-categorization,
+   intelligent scheduling based on content type)
