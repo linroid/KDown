@@ -1,6 +1,7 @@
 package com.linroid.kdown.core.engine
 
 import com.linroid.kdown.api.KDownError
+import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
 import com.linroid.kdown.core.file.FileNameResolver
 import com.linroid.kdown.core.log.KDownLogger
@@ -43,13 +44,15 @@ internal class HttpDownloadSource(
   override suspend fun resolve(
     url: String,
     headers: Map<String, String>,
-  ): SourceInfo {
+  ): ResolvedSource {
     val detector = RangeSupportDetector(httpEngine)
     val serverInfo = detector.detect(url, headers)
     val fileName = serverInfo.contentDisposition?.let {
       extractDispositionFileName(it)
     }
-    return SourceInfo(
+    return ResolvedSource(
+      url = url,
+      sourceType = TYPE,
       totalBytes = serverInfo.contentLength ?: -1,
       supportsResume = serverInfo.supportsResume,
       suggestedFileName = fileName,
@@ -58,17 +61,18 @@ internal class HttpDownloadSource(
         serverInfo.etag?.let { put(META_ETAG, it) }
         serverInfo.lastModified?.let { put(META_LAST_MODIFIED, it) }
         if (serverInfo.acceptRanges) put(META_ACCEPT_RANGES, "true")
-      }
+      },
     )
   }
 
   override suspend fun download(context: DownloadContext) {
-    val sourceInfo = resolve(context.url, context.headers)
-    val totalBytes = sourceInfo.totalBytes
+    val resolved = context.preResolved
+      ?: resolve(context.url, context.headers)
+    val totalBytes = resolved.totalBytes
     if (totalBytes < 0) throw KDownError.Unsupported
 
     val segments = if (
-      sourceInfo.supportsResume && context.request.connections > 1
+      resolved.supportsResume && context.request.connections > 1
     ) {
       KDownLogger.i("HttpSource") {
         "Server supports ranges. Using ${context.request.connections} " +

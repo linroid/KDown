@@ -8,6 +8,7 @@ import com.linroid.kdown.api.DownloadTask
 import com.linroid.kdown.api.KDownApi
 import com.linroid.kdown.api.KDownError
 import com.linroid.kdown.api.KDownVersion
+import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
 import com.linroid.kdown.api.SpeedLimit
 import com.linroid.kdown.core.engine.DelegatingSpeedLimiter
@@ -258,6 +259,15 @@ class KDown(
     monitorTaskState(taskId, stateFlow)
     tasksMutex.withLock { _tasks.value += task }
     return task
+  }
+
+  override suspend fun resolve(
+    url: String,
+    headers: Map<String, String>,
+  ): ResolvedSource {
+    KDownLogger.i("KDown") { "Resolving URL: $url" }
+    val source = sourceResolver.resolve(url)
+    return source.resolve(url, headers)
   }
 
   override suspend fun start() {
