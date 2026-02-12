@@ -18,17 +18,6 @@ A full-featured Kotlin Multiplatform download manager — run locally, remotely,
 
 > **WIP:** This project is under active development. APIs may change. Contributions and feedback are welcome!
 
-### Roadmap
-
-- FTP/FTPS protocol support
-- BitTorrent with segmented piece downloading and P2P transfers
-- Magnet link support with DHT/tracker-based metadata resolution
-- HLS streaming — download and merge `.m3u8` playlist segments
-- Resource sniffer — detect downloadable resources from web pages
-- Media downloads — web media extraction (like yt-dlp) with pluggable extractors
-- Browser extension for intercepting downloads via the daemon server
-- AI integration — MCP server for AI agent tool access and skill-based automation
-
 ## Features
 
 - **Multi-platform** `✅ Available` -- Android, iOS, JVM/Desktop, and WebAssembly (WasmJs)
@@ -45,6 +34,14 @@ A full-featured Kotlin Multiplatform download manager — run locally, remotely,
 - **Daemon server** `✅ Available` -- Run KDown as a background service with REST API and SSE events
 - **Remote control** `✅ Available` -- Control a daemon server from any client via `RemoteKDown`
 - **Pluggable HTTP engine** `✅ Available` -- Ships with Ktor; bring your own `HttpEngine` if needed
+- **FTP/FTPS** `🔮 Planned` -- FTP/FTPS protocol as a pluggable download source
+- **BitTorrent** `🔮 Planned` -- Segmented piece downloading and peer-to-peer transfers
+- **Magnet links** `🔮 Planned` -- Magnet URI scheme with DHT/tracker-based metadata resolution
+- **HLS streaming** `🔮 Planned` -- Download and merge `.m3u8` playlist segments
+- **Resource sniffer** `🔮 Planned` -- Detect downloadable resources from web pages
+- **Media downloads** `🔮 Planned` -- Web media extraction (like yt-dlp) with pluggable extractors
+- **Browser extension** `🔮 Planned` -- Intercept and manage downloads via the daemon server
+- **AI integration** `🔮 Planned` -- MCP server for AI agent tool access and skill-based automation
 
 ## Quick Start
 
