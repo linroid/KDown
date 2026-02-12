@@ -104,7 +104,7 @@ class PreResolvedDownloadTest {
     assertEquals(10000L, resolved.totalBytes)
     assertTrue(resolved.supportsResume)
     assertEquals("data.csv", resolved.suggestedFileName)
-    assertEquals(Int.MAX_VALUE, resolved.maxSegments)
+    assertEquals(4, resolved.maxSegments)
     assertEquals("\"abc\"", resolved.metadata["etag"])
     assertEquals(
       "Mon, 01 Jan 2024 00:00:00 GMT",

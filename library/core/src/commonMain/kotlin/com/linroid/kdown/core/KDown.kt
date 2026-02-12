@@ -82,6 +82,7 @@ class KDown(
   private val httpSource = HttpDownloadSource(
     httpEngine = httpEngine,
     fileNameResolver = fileNameResolver,
+    maxConnections = config.maxConnections,
     progressUpdateIntervalMs = config.progressUpdateIntervalMs,
     segmentSaveIntervalMs = config.segmentSaveIntervalMs,
   )

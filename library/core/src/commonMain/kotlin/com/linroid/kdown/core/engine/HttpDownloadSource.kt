@@ -31,6 +31,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class HttpDownloadSource(
   private val httpEngine: HttpEngine,
   private val fileNameResolver: FileNameResolver,
+  private val maxConnections: Int = 4,
   private val progressUpdateIntervalMs: Long = 200,
   private val segmentSaveIntervalMs: Long = 5000,
 ) : DownloadSource {
@@ -57,7 +58,7 @@ internal class HttpDownloadSource(
       totalBytes = serverInfo.contentLength ?: -1,
       supportsResume = serverInfo.supportsResume,
       suggestedFileName = fileName,
-      maxSegments = if (serverInfo.supportsResume) Int.MAX_VALUE else 1,
+      maxSegments = if (serverInfo.supportsResume) maxConnections else 1,
       metadata = buildMap {
         serverInfo.etag?.let { put(META_ETAG, it) }
         serverInfo.lastModified?.let { put(META_LAST_MODIFIED, it) }

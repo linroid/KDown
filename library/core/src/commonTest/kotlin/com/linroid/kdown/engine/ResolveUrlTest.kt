@@ -42,7 +42,7 @@ class ResolveUrlTest {
     assertEquals("http", resolved.sourceType)
     assertEquals(5000L, resolved.totalBytes)
     assertTrue(resolved.supportsResume)
-    assertEquals(Int.MAX_VALUE, resolved.maxSegments)
+    assertEquals(4, resolved.maxSegments)
     assertEquals("\"test-etag\"", resolved.metadata["etag"])
     assertEquals(
       "Wed, 01 Jan 2025 00:00:00 GMT",

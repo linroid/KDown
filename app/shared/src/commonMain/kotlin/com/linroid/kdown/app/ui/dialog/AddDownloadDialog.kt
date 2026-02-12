@@ -465,10 +465,13 @@ private fun ResolvedInfoCard(
           modifier = Modifier.width(80.dp),
         )
         Text(
-          text = if (resolved.maxSegments > 1) {
-            "Up to ${resolved.maxSegments}"
-          } else {
-            "Single connection"
+          text = when {
+            resolved.maxSegments <= 1 ->
+              "Single connection"
+            resolved.maxSegments >= 1024 ->
+              "Unlimited"
+            else ->
+              "Up to ${resolved.maxSegments}"
           },
           style =
             MaterialTheme.typography.labelSmall,
