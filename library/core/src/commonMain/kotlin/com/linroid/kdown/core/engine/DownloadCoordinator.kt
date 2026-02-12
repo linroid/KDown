@@ -289,7 +289,6 @@ internal class DownloadCoordinator(
       KDownLogger.i("Coordinator") {
         "Pausing download for taskId=$taskId"
       }
-      active.job.cancel()
 
       // Use segmentsFlow as the source of truth — it is
       // continuously updated by the download source with the
@@ -297,6 +296,17 @@ internal class DownloadCoordinator(
       val currentSegments = active.segmentsFlow.value
         .ifEmpty { null }
         ?: active.segments
+
+      val pausedDownloaded =
+        currentSegments?.sumOf { it.downloadedBytes } ?: 0L
+
+      // Set Paused BEFORE cancelling the job so the
+      // CancellationException handler won't set Canceled.
+      active.stateFlow.value = DownloadState.Paused(
+        DownloadProgress(pausedDownloaded, active.totalBytes)
+      )
+
+      active.job.cancel()
 
       currentSegments?.let { segments ->
         KDownLogger.d("Coordinator") {
@@ -324,11 +334,6 @@ internal class DownloadCoordinator(
         }
       }
 
-      val pausedDownloaded =
-        currentSegments?.sumOf { it.downloadedBytes } ?: 0L
-      active.stateFlow.value = DownloadState.Paused(
-        DownloadProgress(pausedDownloaded, active.totalBytes)
-      )
       activeDownloads.remove(taskId)
     }
   }

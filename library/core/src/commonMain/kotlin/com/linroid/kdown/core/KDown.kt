@@ -246,10 +246,10 @@ class KDown(
               "conditions=${conditions.size}"
         }
         scheduleManager.cancel(taskId)
-        scheduler.dequeue(taskId)
         if (s.isActive) {
           coordinator.pause(taskId)
         }
+        scheduler.dequeue(taskId)
         scheduleManager.reschedule(
           taskId, request, schedule, conditions,
           now, stateFlow, segmentsFlow,
@@ -397,10 +397,10 @@ class KDown(
               "conditions=${conditions.size}"
         }
         scheduleManager.cancel(record.taskId)
-        scheduler.dequeue(record.taskId)
         if (s.isActive) {
           coordinator.pause(record.taskId)
         }
+        scheduler.dequeue(record.taskId)
         scheduleManager.reschedule(
           record.taskId, record.request, schedule, conditions,
           record.createdAt, stateFlow, segmentsFlow,
