@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlin.time.Clock
+import kotlin.time.TimeSource
 
 internal class DownloadCoordinator(
   private val sourceResolver: SourceResolver,
@@ -583,6 +584,9 @@ internal class DownloadCoordinator(
     totalBytes: Long,
     headers: Map<String, String>
   ): DownloadContext {
+    var lastBytes = 0L
+    var lastMark = TimeSource.Monotonic.markNow()
+    var speed = 0L
     return DownloadContext(
       taskId = taskId,
       url = url,
@@ -590,8 +594,16 @@ internal class DownloadCoordinator(
       fileAccessor = fileAccessor,
       segments = segmentsFlow,
       onProgress = { downloaded, total ->
+        val now = TimeSource.Monotonic.markNow()
+        val elapsed = (now - lastMark).inWholeMilliseconds
+        if (elapsed >= 500) {
+          val delta = downloaded - lastBytes
+          speed = if (elapsed > 0) delta * 1000 / elapsed else 0L
+          lastBytes = downloaded
+          lastMark = now
+        }
         stateFlow.value = DownloadState.Downloading(
-          DownloadProgress(downloaded, total)
+          DownloadProgress(downloaded, total, speed)
         )
         // Update segments in task record periodically
         val snapshot = segmentsFlow.value
