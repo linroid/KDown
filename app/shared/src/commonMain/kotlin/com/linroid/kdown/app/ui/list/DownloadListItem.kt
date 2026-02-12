@@ -1,8 +1,9 @@
 package com.linroid.kdown.app.ui.list
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -218,43 +219,31 @@ fun DownloadListItem(
         }
 
         // Expanded panel below icons
-        AnimatedVisibility(
-          visible = expanded == ExpandedPanel.SpeedLimit,
-          enter = expandVertically(),
-          exit = shrinkVertically()
-        ) {
-          SpeedLimitPanel(
-            task = task, scope = scope
-          )
-        }
-        AnimatedVisibility(
-          visible = expanded == ExpandedPanel.Priority,
-          enter = expandVertically(),
-          exit = shrinkVertically()
-        ) {
-          PriorityPanel(
-            task = task, scope = scope
-          )
-        }
-        AnimatedVisibility(
-          visible = expanded == ExpandedPanel.Schedule,
-          enter = expandVertically(),
-          exit = shrinkVertically()
-        ) {
-          SchedulePanel(
-            task = task,
-            scope = scope,
-            onScheduled = {
-              expanded = ExpandedPanel.None
-            }
-          )
-        }
-        AnimatedVisibility(
-          visible = expanded == ExpandedPanel.Settings,
-          enter = expandVertically(),
-          exit = shrinkVertically()
-        ) {
-          TaskSettingsPanel(task = task)
+        AnimatedContent(
+          targetState = expanded,
+          transitionSpec = {
+            expandVertically() togetherWith shrinkVertically()
+          }
+        ) { panel ->
+          when (panel) {
+            ExpandedPanel.SpeedLimit -> SpeedLimitPanel(
+              task = task, scope = scope
+            )
+            ExpandedPanel.Priority -> PriorityPanel(
+              task = task, scope = scope
+            )
+            ExpandedPanel.Schedule -> SchedulePanel(
+              task = task,
+              scope = scope,
+              onScheduled = {
+                expanded = ExpandedPanel.None
+              }
+            )
+            ExpandedPanel.Settings -> TaskSettingsPanel(
+              task = task
+            )
+            ExpandedPanel.None -> {}
+          }
         }
       }
     }
