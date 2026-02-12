@@ -9,26 +9,39 @@
 [![JVM](https://img.shields.io/badge/JVM-11+-DB380E.svg?logo=openjdk&logoColor=white)](https://openjdk.org)
 [![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-6b48ff.svg?logo=anthropic&logoColor=white)](https://claude.ai/claude-code)
 
-A Kotlin Multiplatform download manager with segmented downloads, pause/resume, queue management, speed limiting, and scheduling -- for Android, JVM, iOS, and WebAssembly.
+A full-featured Kotlin Multiplatform download manager — run locally, remotely, or embedded in your app. Supports Android, JVM, iOS, and WebAssembly.
+
+- **Embed it** — Add downloads to your Android, iOS, or Desktop app with a simple API
+- **Run it as a daemon** — Self-hosted download server with REST API and real-time SSE events
+- **Control it remotely** — Manage a daemon from any client (mobile app, web UI, CLI, or AI agent)
+- **Extend it** — Pluggable architecture for custom protocols (FTP, BitTorrent, HLS, and more on the roadmap)
 
 > **WIP:** This project is under active development. APIs may change. Contributions and feedback are welcome!
 
 ## Features
 
-- **Multi-platform** -- Android, iOS, JVM/Desktop, and WebAssembly (WasmJs)
-- **Segmented downloads** -- Split files into N concurrent segments using HTTP Range requests
-- **Pause / Resume** -- True resume using byte ranges, with ETag/Last-Modified validation
-- **Queue management** -- Priority-based queue with configurable concurrency limits and per-host throttling
-- **Speed limiting** -- Global and per-task bandwidth throttling via token-bucket algorithm
-- **Scheduling** -- Start downloads at a specific time, after a delay, or when conditions are met
-- **Download conditions** -- User-defined conditions (e.g., WiFi-only) that gate download start
-- **Pluggable sources** -- Extensible `DownloadSource` interface for custom protocols (HTTP built-in)
-- **Persistent resume** -- Task metadata survives app restarts via pluggable `TaskStore`
-- **Progress tracking** -- Aggregated progress across segments via `StateFlow`, with download speed
-- **Retry with backoff** -- Configurable exponential backoff for transient errors
-- **Daemon server** -- Run KDown as a background service with REST API and SSE events
-- **Remote control** -- Control a daemon server from any client via `RemoteKDown`
-- **Pluggable HTTP engine** -- Ships with Ktor; bring your own `HttpEngine` if needed
+- **Multi-platform** `✅` -- Android, iOS, JVM/Desktop, and WebAssembly (WasmJs)
+- **Segmented downloads** `✅` -- Split files into N concurrent segments using HTTP Range requests
+- **Pause / Resume** `✅` -- True resume using byte ranges, with ETag/Last-Modified validation
+- **Queue management** `✅` -- Priority-based queue with configurable concurrency limits and per-host throttling
+- **Speed limiting** `✅` -- Global and per-task bandwidth throttling via token-bucket algorithm
+- **Scheduling** `✅` -- Start downloads at a specific time, after a delay, or when conditions are met
+- **Download conditions** `✅` -- User-defined conditions (e.g., WiFi-only) that gate download start
+- **Pluggable sources** `✅` -- Extensible `DownloadSource` interface for custom protocols (HTTP built-in)
+- **Persistent resume** `✅` -- Task metadata survives app restarts via pluggable `TaskStore`
+- **Progress tracking** `✅` -- Aggregated progress across segments via `StateFlow`, with download speed
+- **Retry with backoff** `✅` -- Configurable exponential backoff for transient errors
+- **Daemon server** `✅` -- Run KDown as a background service with REST API and SSE events
+- **Remote control** `✅` -- Control a daemon server from any client via `RemoteKDown`
+- **Pluggable HTTP engine** `✅` -- Ships with Ktor; bring your own `HttpEngine` if needed
+- **FTP/FTPS** `🔜` -- FTP/FTPS protocol as a pluggable download source
+- **BitTorrent** `🔜` -- Segmented piece downloading and peer-to-peer transfers
+- **Magnet links** `🔜` -- Magnet URI scheme with DHT/tracker-based metadata resolution
+- **HLS streaming** `🔜` -- Download and merge `.m3u8` playlist segments
+- **Resource sniffer** `🔜` -- Detect downloadable resources from web pages
+- **Media downloads** `🔜` -- Web media extraction (like yt-dlp) with pluggable extractors
+- **Browser extension** `🔜` -- Intercept and manage downloads via the daemon server
+- **AI integration** `🔜` -- MCP server for AI agent tool access and skill-based automation
 
 ## Quick Start
 
