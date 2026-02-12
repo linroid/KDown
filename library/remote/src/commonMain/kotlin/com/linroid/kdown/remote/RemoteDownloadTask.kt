@@ -55,11 +55,11 @@ internal class RemoteDownloadTask(
     _segments.value = newSegments
   }
 
-  private val byId get() = Api.Downloads.ById(id = taskId)
+  private val byId get() = Api.Tasks.ById(id = taskId)
 
   override suspend fun pause() {
     val response = httpClient.post(
-      Api.Downloads.ById.Pause(parent = byId)
+      Api.Tasks.ById.Pause(parent = byId)
     )
     checkSuccess(response)
     applyWireResponse(response.bodyAsText())
@@ -67,7 +67,7 @@ internal class RemoteDownloadTask(
 
   override suspend fun resume() {
     val response = httpClient.post(
-      Api.Downloads.ById.Resume(parent = byId)
+      Api.Tasks.ById.Resume(parent = byId)
     )
     checkSuccess(response)
     applyWireResponse(response.bodyAsText())
@@ -75,7 +75,7 @@ internal class RemoteDownloadTask(
 
   override suspend fun cancel() {
     val response = httpClient.post(
-      Api.Downloads.ById.Cancel(parent = byId)
+      Api.Tasks.ById.Cancel(parent = byId)
     )
     checkSuccess(response)
     applyWireResponse(response.bodyAsText())
@@ -89,7 +89,7 @@ internal class RemoteDownloadTask(
 
   override suspend fun setSpeedLimit(limit: SpeedLimit) {
     val response = httpClient.put(
-      Api.Downloads.ById.SpeedLimit(parent = byId)
+      Api.Tasks.ById.SpeedLimit(parent = byId)
     ) {
       contentType(ContentType.Application.Json)
       setBody(json.encodeToString(
@@ -103,7 +103,7 @@ internal class RemoteDownloadTask(
 
   override suspend fun setPriority(priority: DownloadPriority) {
     val response = httpClient.put(
-      Api.Downloads.ById.Priority(parent = byId)
+      Api.Tasks.ById.Priority(parent = byId)
     ) {
       contentType(ContentType.Application.Json)
       setBody(json.encodeToString(

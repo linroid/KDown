@@ -110,7 +110,7 @@ class RemoteKDown(
     request: DownloadRequest
   ): DownloadTask {
     val wireRequest = WireMapper.toCreateWire(request)
-    val response = httpClient.post(Api.Downloads()) {
+    val response = httpClient.post(Api.Tasks()) {
       contentType(ContentType.Application.Json)
       setBody(
         json.encodeToString(
@@ -183,7 +183,7 @@ class RemoteKDown(
   }
 
   private suspend fun fetchAllTasks() {
-    val response = httpClient.get(Api.Downloads())
+    val response = httpClient.get(Api.Tasks())
     if (response.status.isSuccess()) {
       val wireTasks: List<TaskResponse> =
         json.decodeFromString(response.bodyAsText())
@@ -202,7 +202,7 @@ class RemoteKDown(
       "task_added" -> {
         try {
           val response = httpClient.get(
-            Api.Downloads.ById(id = event.taskId)
+            Api.Tasks.ById(id = event.taskId)
           )
           if (response.status.isSuccess()) {
             val wire: TaskResponse =

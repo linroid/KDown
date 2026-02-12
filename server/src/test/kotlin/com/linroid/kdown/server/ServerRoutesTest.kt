@@ -53,7 +53,7 @@ class ServerRoutesTest {
       }
 
       // Create a task
-      client.post("/api/downloads") {
+      client.post("/api/tasks") {
         contentType(ContentType.Application.Json)
         setBody(
           CreateDownloadRequest(
@@ -82,7 +82,7 @@ class ServerRoutesTest {
         install(ContentNegotiation) { json(json) }
       }
 
-      val createResponse = client.post("/api/downloads") {
+      val createResponse = client.post("/api/tasks") {
         contentType(ContentType.Application.Json)
         setBody(
           CreateDownloadRequest(
@@ -94,7 +94,7 @@ class ServerRoutesTest {
       val task = json.decodeFromString<TaskResponse>(
         createResponse.bodyAsText()
       )
-      client.post("/api/downloads/${task.taskId}/cancel")
+      client.post("/api/tasks/${task.taskId}/cancel")
 
       val response = client.get("/api/status")
       val status = json.decodeFromString<ServerStatus>(

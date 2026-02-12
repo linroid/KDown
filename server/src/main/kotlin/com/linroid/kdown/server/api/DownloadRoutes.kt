@@ -20,15 +20,15 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 
 /**
- * Installs the `/api/downloads` REST routes for managing tasks.
+ * Installs the `/api/tasks` REST routes for managing tasks.
  */
 internal fun Route.downloadRoutes(kdown: KDownApi) {
-  get<Api.Downloads> {
+  get<Api.Tasks> {
     val tasks = kdown.tasks.value
     call.respond(tasks.map(TaskMapper::toResponse))
   }
 
-  post<Api.Downloads> {
+  post<Api.Tasks> {
     val body = call.receive<CreateDownloadRequest>()
     val priority = parsePriority(body.priority)
     if (priority == null) {
@@ -63,7 +63,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     )
   }
 
-  get<Api.Downloads.ById> { resource ->
+  get<Api.Tasks.ById> { resource ->
     val task = kdown.tasks.value.find {
       it.taskId == resource.id
     }
@@ -79,7 +79,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     call.respond(TaskMapper.toResponse(task))
   }
 
-  post<Api.Downloads.ById.Pause> { resource ->
+  post<Api.Tasks.ById.Pause> { resource ->
     val taskId = resource.parent.id
     val task = kdown.tasks.value.find {
       it.taskId == taskId
@@ -95,7 +95,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     call.respond(TaskMapper.toResponse(task))
   }
 
-  post<Api.Downloads.ById.Resume> { resource ->
+  post<Api.Tasks.ById.Resume> { resource ->
     val taskId = resource.parent.id
     val task = kdown.tasks.value.find {
       it.taskId == taskId
@@ -111,7 +111,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     call.respond(TaskMapper.toResponse(task))
   }
 
-  post<Api.Downloads.ById.Cancel> { resource ->
+  post<Api.Tasks.ById.Cancel> { resource ->
     val taskId = resource.parent.id
     val task = kdown.tasks.value.find {
       it.taskId == taskId
@@ -127,7 +127,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     call.respond(TaskMapper.toResponse(task))
   }
 
-  delete<Api.Downloads.ById> { resource ->
+  delete<Api.Tasks.ById> { resource ->
     val task = kdown.tasks.value.find {
       it.taskId == resource.id
     }
@@ -144,7 +144,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     call.respond(HttpStatusCode.NoContent)
   }
 
-  put<Api.Downloads.ById.SpeedLimit> { resource ->
+  put<Api.Tasks.ById.SpeedLimit> { resource ->
     val taskId = resource.parent.id
     val task = kdown.tasks.value.find {
       it.taskId == taskId
@@ -166,7 +166,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     call.respond(TaskMapper.toResponse(task))
   }
 
-  put<Api.Downloads.ById.Priority> { resource ->
+  put<Api.Tasks.ById.Priority> { resource ->
     val taskId = resource.parent.id
     val task = kdown.tasks.value.find {
       it.taskId == taskId
