@@ -14,7 +14,7 @@ import platform.Foundation.NSUserDomainMask
 @Suppress("unused", "FunctionName")
 fun MainViewController() = ComposeUIViewController {
   val backendManager = remember {
-    val taskStore = createSqliteTaskStore(DriverFactory("kdown.db"))
+    val taskStore = createSqliteTaskStore(DriverFactory())
     @Suppress("UNCHECKED_CAST")
     val downloadsDir = (NSSearchPathForDirectoriesInDomains(
       NSDocumentDirectory, NSUserDomainMask, true,
