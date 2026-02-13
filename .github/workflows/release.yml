@@ -22,11 +22,6 @@ jobs:
             os: macos
             arch: aarch64
             ext: tar.gz
-          - name: macOS-x64
-            runner: macos-13
-            os: macos
-            arch: x64
-            ext: tar.gz
           - name: Linux-x64
             runner: ubuntu-latest
             os: linux
