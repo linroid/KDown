@@ -7,6 +7,9 @@ on:
 permissions:
   contents: write
 
+env:
+  KDOWN_VERSION: ${{ github.ref_name }}
+
 jobs:
   build-cli:
     name: CLI (${{ matrix.name }})
@@ -55,7 +58,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build native image
-        run: ./gradlew :cli:nativeCompile
+        run: ./gradlew :cli:nativeCompile -Pkdown.version=${KDOWN_VERSION#v}
 
       - name: Package (Unix)
         if: matrix.os != 'windows'
@@ -101,7 +104,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew :app:android:assembleRelease
+        run: ./gradlew :app:android:assembleRelease -Pkdown.version=${KDOWN_VERSION#v}
 
       - name: Rename APK
         run: |
@@ -150,7 +153,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build desktop package
-        run: ./gradlew :app:desktop:${{ matrix.task }}
+        run: ./gradlew :app:desktop:${{ matrix.task }} -Pkdown.version=${KDOWN_VERSION#v}
 
       - uses: actions/upload-artifact@v6
         with:
@@ -171,7 +174,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build web distribution
-        run: ./gradlew :app:web:wasmJsBrowserDistribution
+        run: ./gradlew :app:web:wasmJsBrowserDistribution -Pkdown.version=${KDOWN_VERSION#v}
 
       - name: Package web distribution
         run: |

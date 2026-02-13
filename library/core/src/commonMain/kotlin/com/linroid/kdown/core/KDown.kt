@@ -95,7 +95,7 @@ class KDown(
 
   init {
     KDownLogger.setLogger(logger)
-    KDownLogger.i("KDown") { "KDown v$VERSION initialized" }
+    KDownLogger.i("KDown") { "KDown v${KDownVersion.DEFAULT} initialized" }
     if (!config.speedLimit.isUnlimited) {
       KDownLogger.i("KDown") {
         "Global speed limit: " +
@@ -501,6 +501,6 @@ class KDown(
   }
 
   companion object {
-    const val VERSION = "1.0.0"
+    val VERSION: String = KDownVersion.DEFAULT
   }
 }
