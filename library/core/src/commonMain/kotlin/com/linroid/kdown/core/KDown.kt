@@ -500,7 +500,5 @@ class KDown(
     scope.cancel()
   }
 
-  companion object {
-    val VERSION: String = KDownVersion.DEFAULT
-  }
+  companion object
 }
