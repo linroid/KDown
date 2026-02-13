@@ -10,6 +10,10 @@ permissions:
 env:
   KDOWN_VERSION: ${{ github.ref_name }}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build-cli:
     name: CLI (${{ matrix.name }})
@@ -21,11 +25,6 @@ jobs:
             runner: macos-14
             os: macos
             arch: aarch64
-            ext: tar.gz
-          - name: macOS-x64
-            runner: macos-13
-            os: macos
-            arch: x64
             ext: tar.gz
           - name: Linux-x64
             runner: ubuntu-latest
@@ -41,11 +40,6 @@ jobs:
             runner: windows-latest
             os: windows
             arch: x64
-            ext: zip
-          - name: Windows-arm64
-            runner: windows-11-arm
-            os: windows
-            arch: aarch64
             ext: zip
     steps:
       - uses: actions/checkout@v6
@@ -68,10 +62,9 @@ jobs:
 
       - name: Package (Windows)
         if: matrix.os == 'windows'
-        shell: pwsh
         run: |
           cd cli/build/native/nativeCompile
-          Compress-Archive -Path kdown.exe -DestinationPath kdown-${{ matrix.os }}-${{ matrix.arch }}.zip
+          7z a kdown-${{ matrix.os }}-${{ matrix.arch }}.zip kdown.exe
 
       - uses: actions/upload-artifact@v6
         with:
@@ -124,23 +117,23 @@ jobs:
         include:
           - name: macOS
             runner: macos-latest
-            task: packageDmg
+            task: packageReleaseDmg
             artifact: "*.dmg"
           - name: Linux-x64
             runner: ubuntu-latest
-            task: packageDeb
+            task: packageReleaseDeb
             artifact: "*.deb"
           - name: Linux-arm64
             runner: ubuntu-24.04-arm
-            task: packageDeb
+            task: packageReleaseDeb
             artifact: "*.deb"
           - name: Windows-x64
             runner: windows-latest
-            task: packageMsi
+            task: packageReleaseMsi
             artifact: "*.msi"
           - name: Windows-arm64
             runner: windows-11-arm
-            task: packageMsi
+            task: packageReleaseMsi
             artifact: "*.msi"
     steps:
       - uses: actions/checkout@v6
@@ -148,7 +141,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - uses: gradle/actions/setup-gradle@v5
 
@@ -158,7 +151,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         with:
           name: kdown-desktop-${{ matrix.name }}
-          path: app/desktop/build/compose/binaries/main/**/${{ matrix.artifact }}
+          path: app/desktop/build/compose/binaries/main-release/**/${{ matrix.artifact }}
 
   build-web:
     name: Web (WasmJs)
