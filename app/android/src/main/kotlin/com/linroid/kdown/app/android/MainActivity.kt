@@ -23,6 +23,9 @@ class MainActivity : ComponentActivity() {
   private val requestNotificationPermission = registerForActivityResult(
     ActivityResultContracts.RequestPermission(),
   ) { }
+  private val requestExternalStoragePermission = registerForActivityResult(
+    ActivityResultContracts.RequestPermission(),
+  ) { }
 
   private val connection = object : ServiceConnection {
     override fun onServiceConnected(name: ComponentName, binder: IBinder) {
@@ -37,6 +40,7 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    requestExternalStoragePermissionIfNeeded()
     requestNotificationPermissionIfNeeded()
     bindService(
       Intent(this, KDownService::class.java),
@@ -64,5 +68,15 @@ class MainActivity : ComponentActivity() {
       return
     }
     requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+  }
+
+  private fun requestExternalStoragePermissionIfNeeded() {
+    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+      return
+    }
+    if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+      return
+    }
+    requestExternalStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
   }
 }
