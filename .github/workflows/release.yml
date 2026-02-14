@@ -54,6 +54,18 @@ jobs:
       - name: Build native image
         run: ./gradlew :cli:nativeCompile -PVERSION_NAME=${KDOWN_VERSION#v}
 
+      - name: Compress with UPX (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y upx-ucl
+          upx --best cli/build/native/nativeCompile/kdown
+
+      - name: Compress with UPX (Windows)
+        if: matrix.os == 'windows'
+        run: |
+          choco install upx -y
+          upx --best cli/build/native/nativeCompile/kdown.exe
+
       - name: Package (Unix)
         if: matrix.os != 'windows'
         run: |
