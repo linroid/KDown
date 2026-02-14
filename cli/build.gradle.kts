@@ -1,3 +1,5 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 plugins {
   alias(libs.plugins.kotlinJvm)
   alias(libs.plugins.kotlinx.serialization)
@@ -33,10 +35,7 @@ graalvmNative {
         "-H:IncludeResources=web/.*",
         "-H:IncludeResources=logback.xml",
       )
-      if (!Os.isFamily(
-          org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC
-        )
-      ) {
+      if (!Os.isFamily(Os.FAMILY_MAC)) {
         buildArgs.add("-H:+StripDebugInfo")
       }
     }
