@@ -15,6 +15,8 @@ plugins {
 }
 
 subprojects {
+  version = findProperty("VERSION_NAME") ?: "unspecified"
+
   tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
       freeCompilerArgs.add("-Xexpect-actual-classes")
