@@ -15,9 +15,6 @@ dependencies {
   implementation(compose.desktop.currentOs)
   implementation(libs.kotlinx.coroutinesSwing)
   implementation(libs.logback)
-  // Needed for ProGuard to resolve Netty's Log4J2Logger class hierarchy.
-  // Shrunk away in the final output since nothing references it.
-  runtimeOnly(libs.log4j.api)
 }
 
 compose.desktop {

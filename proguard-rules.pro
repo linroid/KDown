@@ -19,9 +19,6 @@
 -dontwarn kotlinx.coroutines.**
 -keep class io.ktor.client.engine.cio.CIOEngineContainer { *; }
 
-# Netty
--dontwarn io.netty.**
-
 # SLF4J / Logback
 -dontwarn org.slf4j.**
 -dontwarn ch.qos.logback.**
@@ -29,9 +26,6 @@
 -keep class ch.qos.logback.classic.Logger { *; }
 -keep class ch.qos.logback.core.** { *; }
 -keep class ch.qos.logback.classic.** { *; }
-
-# Log4J2 (on classpath for Netty hierarchy resolution, shrunk away)
--dontwarn org.apache.logging.log4j.**
 -dontwarn org.osgi.**
 -dontwarn aQute.bnd.**
 -dontwarn edu.umd.cs.findbugs.**

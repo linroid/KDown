@@ -24,11 +24,37 @@ graalvmNative {
       buildArgs.addAll(
         "--no-fallback",
         "-H:+ReportExceptionStackTraces",
-        "--initialize-at-build-time=kotlin",
+        "--initialize-at-build-time=io.ktor,kotlin,kotlinx.coroutines,kotlinx.serialization,kotlinx.io",
+        "--initialize-at-build-time=ch.qos.logback",
+        "--initialize-at-build-time=org.slf4j.LoggerFactory",
+        "--initialize-at-build-time=org.slf4j.helpers.Reporter",
         "--initialize-at-run-time=kotlin.uuid.SecureRandomHolder",
+        "-H:IncludeResources=web/.*",
+        "-H:IncludeResources=logback.xml",
       )
     }
   }
+}
+
+val bundleWebApp by tasks.registering(Copy::class) {
+  dependsOn(":app:web:wasmJsBrowserDistribution")
+  from(project(":app:web").layout.buildDirectory.dir("dist/wasmJs/productionExecutable"))
+  exclude("*.map", "*.LICENSE.txt")
+  into(layout.buildDirectory.dir("generated/resources/web"))
+  // Inject auto-connect flag so the bundled web UI connects to its
+  // serving host automatically.
+  filesMatching("index.html") {
+    filter { line ->
+      line.replace(
+        "<head>",
+        "<head>\n    <meta name=\"kdown-auto-connect\" content=\"true\">",
+      )
+    }
+  }
+}
+
+sourceSets.main {
+  resources.srcDir(bundleWebApp.map { layout.buildDirectory.dir("generated/resources") })
 }
 
 dependencies {

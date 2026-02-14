@@ -5,9 +5,11 @@ import com.linroid.kdown.endpoints.model.ErrorResponse
 import com.linroid.kdown.server.api.downloadRoutes
 import com.linroid.kdown.server.api.eventRoutes
 import com.linroid.kdown.server.api.serverRoutes
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.defaultForFileExtension
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCallPipeline
@@ -15,14 +17,17 @@ import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
-import io.ktor.server.netty.NettyApplicationEngine
+import io.ktor.server.cio.CIO
+import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
 import io.ktor.server.resources.Resources
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
 import kotlinx.serialization.json.Json
@@ -70,7 +75,7 @@ class KDownServer(
   private val config: KDownServerConfig = KDownServerConfig.Default,
 ) {
   private var engine:
-    EmbeddedServer<NettyApplicationEngine, *>? = null
+    EmbeddedServer<CIOApplicationEngine, *>? = null
 
   /**
    * Starts the daemon server.
@@ -80,7 +85,7 @@ class KDownServer(
    */
   fun start(wait: Boolean = true) {
     engine = embeddedServer(
-      Netty,
+      CIO,
       host = config.host,
       port = config.port,
       module = { configureServer() },
@@ -169,6 +174,33 @@ class KDownServer(
       serverRoutes(kdown)
       downloadRoutes(kdown)
       eventRoutes(kdown)
+      webResources()
+    }
+  }
+}
+
+/**
+ * Serves bundled web UI resources from the classpath.
+ * Uses [ClassLoader.getResource] directly for GraalVM native image
+ * compatibility, since Ktor's `staticResources` relies on classpath
+ * scanning that doesn't work in native images.
+ */
+private fun Route.webResources() {
+  val loader = KDownServer::class.java.classLoader
+  get("{path...}") {
+    val path = call.parameters.getAll("path")
+      ?.joinToString("/")
+      ?.ifEmpty { "index.html" }
+      ?: "index.html"
+    val resource = loader.getResource("web/$path")
+    if (resource != null) {
+      val ext = path.substringAfterLast('.', "")
+      val contentType =
+        ContentType.defaultForFileExtension(ext)
+      call.respondBytes(
+        resource.readBytes(),
+        contentType,
+      )
     }
   }
 }
