@@ -19,8 +19,10 @@ data class CliConfig(
 data class ServerSection(
   val host: String = "0.0.0.0",
   val port: Int = 8642,
-  @SerialName("api-token") val apiToken: String? = null,
-  @SerialName("cors-allowed-hosts") val corsAllowedHosts: List<String> = emptyList(),
+  @SerialName("api-token")
+  val apiToken: String? = null,
+  @SerialName("cors-allowed-hosts")
+  val corsAllowedHosts: List<String> = emptyList(),
 )
 
 @Serializable
