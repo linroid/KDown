@@ -28,12 +28,8 @@ subprojects {
           name = "mavenCentral"
           url = uri("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/")
           credentials {
-            username = providers.gradleProperty("mavenCentralUsername")
-              .orElse(providers.environmentVariable("ORG_GRADLE_PROJECT_mavenCentralUsername"))
-              .orNull
-            password = providers.gradleProperty("mavenCentralPassword")
-              .orElse(providers.environmentVariable("ORG_GRADLE_PROJECT_mavenCentralPassword"))
-              .orNull
+            username = providers.environmentVariable("MAVEN_CENTRAL_USERNAME").orNull
+            password = providers.environmentVariable("MAVEN_CENTRAL_PASSWORD").orNull
           }
         }
       }
@@ -74,22 +70,14 @@ subprojects {
       }
     }
 
-    val signingKey = providers.gradleProperty("signingInMemoryKey")
-      .orElse(providers.environmentVariable("ORG_GRADLE_PROJECT_signingInMemoryKey"))
-      .orNull
+    val signingKey = providers.environmentVariable("SIGNING_KEY").orNull
     if (signingKey != null) {
       plugins.apply("signing")
       extensions.configure<SigningExtension> {
-        val signingKeyId = providers.gradleProperty("signingInMemoryKeyId")
-          .orElse(providers.environmentVariable("ORG_GRADLE_PROJECT_signingInMemoryKeyId"))
-          .orNull
+        val signingKeyId =
+          providers.environmentVariable("SIGNING_KEY_ID").orNull
         val signingPassword =
-          providers.gradleProperty("signingInMemoryKeyPassword")
-            .orElse(
-              providers.environmentVariable(
-                "ORG_GRADLE_PROJECT_signingInMemoryKeyPassword"
-              )
-            ).orNull
+          providers.environmentVariable("SIGNING_KEY_PASSWORD").orNull
         useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
         sign(extensions.getByType<PublishingExtension>().publications)
       }
