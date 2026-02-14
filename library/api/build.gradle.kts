@@ -16,7 +16,7 @@ val gitRevision: String by lazy {
 
 val generateVersion by tasks.registering {
   val outputDir = layout.buildDirectory.dir("generated/version")
-  val ver = version.toString()
+  val ver = findProperty("VERSION_NAME")?.toString() ?: "dev"
   val revision = gitRevision
   inputs.property("version", ver)
   inputs.property("revision", revision)
