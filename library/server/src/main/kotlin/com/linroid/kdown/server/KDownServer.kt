@@ -170,7 +170,9 @@ class KDownServer(
       serverRoutes(kdown)
       downloadRoutes(kdown)
       eventRoutes(kdown)
-      staticResources("/", "web")
+      staticResources("/", "web") {
+        default("index.html")
+      }
     }
   }
 }
