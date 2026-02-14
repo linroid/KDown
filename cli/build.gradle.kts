@@ -23,6 +23,8 @@ graalvmNative {
       )
       buildArgs.addAll(
         "--no-fallback",
+        "-Os",
+        "-H:+StripDebugInfo",
         "-H:+ReportExceptionStackTraces",
         "--initialize-at-build-time=io.ktor,kotlin,kotlinx.coroutines,kotlinx.serialization,kotlinx.io",
         "--initialize-at-build-time=ch.qos.logback",
