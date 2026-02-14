@@ -4,9 +4,8 @@ plugins {
   alias(libs.plugins.kotlinMultiplatform)
   alias(libs.plugins.androidKmpLibrary)
   alias(libs.plugins.sqldelight)
+  alias(libs.plugins.mavenPublish)
 }
-
-apply(from = "${rootProject.projectDir}/gradle/publish.gradle.kts")
 
 kotlin {
   androidLibrary {
