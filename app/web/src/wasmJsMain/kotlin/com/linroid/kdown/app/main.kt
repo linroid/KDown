@@ -20,12 +20,26 @@ fun main() {
     }
     val scope = rememberCoroutineScope()
     DisposableEffect(Unit) {
-      val host = window.location.hostname
-      val port = window.location.port.toIntOrNull() ?: 80
-      val entry = backendManager.addRemote(host, port)
-      scope.launch { backendManager.switchTo(entry.id) }
+      if (shouldAutoConnect()) {
+        val host = window.location.hostname
+        val port = window.location.port.toIntOrNull() ?: 80
+        val entry = backendManager.addRemote(host, port)
+        scope.launch { backendManager.switchTo(entry.id) }
+      }
       onDispose { backendManager.close() }
     }
     App(backendManager)
   }
+}
+
+/**
+ * Returns `true` when the page contains
+ * `<meta name="kdown-auto-connect" content="true">`,
+ * which the CLI server injects when bundling the web UI.
+ */
+private fun shouldAutoConnect(): Boolean {
+  val meta = document.querySelector(
+    "meta[name='kdown-auto-connect']"
+  ) ?: return false
+  return meta.getAttribute("content") == "true"
 }

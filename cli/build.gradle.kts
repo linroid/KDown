@@ -38,6 +38,16 @@ val bundleWebApp by tasks.registering(Copy::class) {
   from(project(":app:web").layout.buildDirectory.dir("dist/wasmJs/productionExecutable"))
   exclude("*.map", "*.LICENSE.txt")
   into(layout.buildDirectory.dir("generated/resources/web"))
+  // Inject auto-connect flag so the bundled web UI connects to its
+  // serving host automatically.
+  filesMatching("index.html") {
+    filter { line ->
+      line.replace(
+        "<head>",
+        "<head>\n    <meta name=\"kdown-auto-connect\" content=\"true\">",
+      )
+    }
+  }
 }
 
 sourceSets.main {
