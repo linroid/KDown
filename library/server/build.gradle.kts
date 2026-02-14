@@ -10,7 +10,7 @@ dependencies {
   implementation(projects.library.sqlite)
 
   implementation(libs.ktor.serverCore)
-  implementation(libs.ktor.serverNetty)
+  implementation(libs.ktor.serverCio)
   implementation(libs.ktor.serverContentNegotiation)
   implementation(libs.ktor.serverResources)
   implementation(libs.ktor.serverSse)

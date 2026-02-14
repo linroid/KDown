@@ -5,7 +5,6 @@
     </encoder>
   </appender>
 
-  <logger name="io.netty" level="INFO"/>
   <logger name="io.ktor" level="INFO"/>
 
   <root level="INFO">

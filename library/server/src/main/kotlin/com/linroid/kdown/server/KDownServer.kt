@@ -17,8 +17,8 @@ import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
-import io.ktor.server.netty.NettyApplicationEngine
+import io.ktor.server.cio.CIO
+import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -75,7 +75,7 @@ class KDownServer(
   private val config: KDownServerConfig = KDownServerConfig.Default,
 ) {
   private var engine:
-    EmbeddedServer<NettyApplicationEngine, *>? = null
+    EmbeddedServer<CIOApplicationEngine, *>? = null
 
   /**
    * Starts the daemon server.
@@ -85,7 +85,7 @@ class KDownServer(
    */
   fun start(wait: Boolean = true) {
     engine = embeddedServer(
-      Netty,
+      CIO,
       host = config.host,
       port = config.port,
       module = { configureServer() },
