@@ -27,6 +27,7 @@ graalvmNative {
         "--initialize-at-build-time=kotlin",
         "--initialize-at-run-time=kotlin.uuid.SecureRandomHolder",
         "-H:IncludeResources=web/.*",
+        "-H:IncludeResources=logback.xml",
       )
     }
   }
