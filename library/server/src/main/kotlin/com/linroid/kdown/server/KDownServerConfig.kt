@@ -1,5 +1,7 @@
 package com.linroid.kdown.server
 
+import com.linroid.kdown.api.MDNS_SERVICE_TYPE
+
 /**
  * Configuration for the KDown daemon server.
  *
@@ -20,7 +22,7 @@ data class KDownServerConfig(
   val apiToken: String? = null,
   val mdnsEnabled: Boolean = true,
   val mdnsServiceName: String = "KDown",
-  val mdnsServiceType: String = "_kdown._tcp.local.",
+  val mdnsServiceType: String = MDNS_SERVICE_TYPE,
   val corsAllowedHosts: List<String> = emptyList(),
 ) {
   init {

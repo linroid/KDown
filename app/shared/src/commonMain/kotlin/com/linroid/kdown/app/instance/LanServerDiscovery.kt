@@ -1,5 +1,7 @@
 package com.linroid.kdown.app.instance
 
+import com.linroid.kdown.api.MDNS_SERVICE_TYPE
+
 data class DiscoveredServer(
   val name: String,
   val host: String,
@@ -7,14 +9,12 @@ data class DiscoveredServer(
   val tokenRequired: Boolean,
 )
 
-internal expect suspend fun discoverLanServicesViaMdns(
-  timeoutMs: Long,
-): List<DiscoveredServer>
-
-class LanServerDiscovery {
+class LanServerDiscovery(
+  private val discoverer: MdnsDiscoverer = createMdnsDiscoverer(),
+) {
   @Suppress("UNUSED_PARAMETER")
   suspend fun discover(port: Int = DEFAULT_PORT): List<DiscoveredServer> {
-    return discoverLanServicesViaMdns(timeoutMs = DISCOVERY_TIMEOUT_MS)
+    return discoverer.discover(MDNS_SERVICE_TYPE, DISCOVERY_TIMEOUT_MS)
       .distinctBy { "${it.host}:${it.port}" }
       .sortedBy { it.host }
   }

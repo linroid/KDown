@@ -15,7 +15,7 @@ class KDownServerConfigTest {
     assertNull(config.apiToken)
     assertEquals(true, config.mdnsEnabled)
     assertEquals("KDown", config.mdnsServiceName)
-    assertEquals("_kdown._tcp.local.", config.mdnsServiceType)
+    assertEquals("_kdown._tcp", config.mdnsServiceType)
     assertEquals(emptyList(), config.corsAllowedHosts)
   }
 

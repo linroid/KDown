@@ -19,7 +19,7 @@ dependencies {
   implementation(libs.ktor.serialization.json)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.kotlinx.serialization.json)
-  implementation(libs.jmdns)
+  implementation(libs.dnssd)
 
   testImplementation(libs.kotlin.test)
   testImplementation(libs.kotlinx.coroutines.test)

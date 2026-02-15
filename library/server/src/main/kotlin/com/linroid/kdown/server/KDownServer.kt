@@ -30,9 +30,8 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import javax.jmdns.JmDNS
-import javax.jmdns.ServiceInfo
 
 /**
  * A daemon server that exposes a [KDownApi] instance via REST API and
@@ -71,14 +70,15 @@ import javax.jmdns.ServiceInfo
  *
  * @param kdown the KDownApi instance to expose
  * @param config server configuration (host, port, auth, CORS)
+ * @param mdnsRegistrar mDNS service registrar for LAN discovery
  */
 class KDownServer(
   private val kdown: KDownApi,
   private val config: KDownServerConfig = KDownServerConfig.Default,
+  private val mdnsRegistrar: MdnsRegistrar = DnsSdRegistrar(),
 ) {
   private var engine:
     EmbeddedServer<CIOApplicationEngine, *>? = null
-  @Volatile private var mdnsRegistration: MdnsRegistration? = null
 
   /**
    * Starts the daemon server.
@@ -108,29 +108,33 @@ class KDownServer(
 
   private fun startMdnsRegistration() {
     if (!config.mdnsEnabled) return
-    stopMdnsRegistration()
     Thread({
-      mdnsRegistration = runCatching {
-        val info = ServiceInfo.create(
-          config.mdnsServiceType,
-          config.mdnsServiceName,
-          config.port,
-          "token=${if (config.apiToken.isNullOrBlank()) "none" else "required"}",
-        )
-        val jmDNS = JmDNS.create()
-        jmDNS.registerService(info)
-        MdnsRegistration(jmDNS, info)
+      runCatching {
+        runBlocking {
+          val tokenValue =
+            if (config.apiToken.isNullOrBlank()) "none"
+            else "required"
+          mdnsRegistrar.register(
+            serviceType = config.mdnsServiceType,
+            serviceName = config.mdnsServiceName,
+            port = config.port,
+            metadata = mapOf("token" to tokenValue),
+          )
+        }
       }.onFailure { e ->
-        System.err.println("mDNS registration failed: ${e.message}")
-      }.getOrNull()
+        System.err.println(
+          "mDNS registration failed: ${e.message}"
+        )
+      }
     }, "kdown-mdns").apply { isDaemon = true }.start()
   }
 
   private fun stopMdnsRegistration() {
-    val registration = mdnsRegistration ?: return
-    runCatching { registration.jmDNS.unregisterService(registration.info) }
-    runCatching { registration.jmDNS.close() }
-    mdnsRegistration = null
+    runCatching {
+      runBlocking {
+        mdnsRegistrar.unregister()
+      }
+    }
   }
 
   internal fun Application.configureServer() {
@@ -210,11 +214,6 @@ class KDownServer(
     }
   }
 }
-
-private data class MdnsRegistration(
-  val jmDNS: JmDNS,
-  val info: ServiceInfo,
-)
 
 /**
  * Serves bundled web UI resources from the classpath.

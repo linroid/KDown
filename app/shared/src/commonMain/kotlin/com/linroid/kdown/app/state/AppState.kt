@@ -12,16 +12,17 @@ import com.linroid.kdown.api.KDownApi
 import com.linroid.kdown.api.KDownVersion
 import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.SpeedLimit
+import com.linroid.kdown.app.instance.DiscoveredServer
 import com.linroid.kdown.app.instance.InstanceEntry
 import com.linroid.kdown.app.instance.InstanceManager
 import com.linroid.kdown.app.instance.LanServerDiscovery
 import com.linroid.kdown.app.instance.RemoteInstance
 import com.linroid.kdown.app.instance.ServerState
-import com.linroid.kdown.app.instance.DiscoveredServer
 import com.linroid.kdown.remote.ConnectionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+sealed interface DiscoveryState {
+  data object Idle : DiscoveryState
+  data class Discovering(
+    val servers: List<DiscoveredServer> = emptyList(),
+  ) : DiscoveryState
+  data class Finished(
+    val servers: List<DiscoveredServer>,
+  ) : DiscoveryState
+  data class Error(val message: String) : DiscoveryState
+}
 
 sealed interface ResolveState {
   data object Idle : ResolveState
@@ -97,10 +109,11 @@ class AppState(
   var showAddDialog by mutableStateOf(false)
   var showInstanceSelector by mutableStateOf(false)
   var showAddRemoteDialog by mutableStateOf(false)
-  var discoveringRemoteServers by mutableStateOf(false)
+  var discoveryState by mutableStateOf<DiscoveryState>(
+    DiscoveryState.Idle
+  )
     private set
-  var discoveredRemoteServers by mutableStateOf<List<DiscoveredServer>>(emptyList())
-    private set
+  private var discoveryJob: Job? = null
   var switchingInstance by
     mutableStateOf<InstanceEntry?>(null)
   var resolveState by mutableStateOf<ResolveState>(
@@ -199,23 +212,39 @@ class AppState(
   }
 
   fun discoverRemoteServers(port: Int = 8642) {
-    if (discoveringRemoteServers) return
-    discoveringRemoteServers = true
-    discoveredRemoteServers = emptyList()
-    scope.launch {
+    if (discoveryState is DiscoveryState.Discovering) return
+    discoveryState = DiscoveryState.Discovering()
+    discoveryJob = scope.launch {
       try {
-        discoveredRemoteServers = withContext(Dispatchers.Default) {
+        val servers = withContext(Dispatchers.Default) {
           lanServerDiscovery.discover(port)
         }
-        if (discoveredRemoteServers.isEmpty()) {
-          errorMessage = "No KDown server found in LAN."
-        }
+        discoveryState = DiscoveryState.Finished(servers)
       } catch (e: Exception) {
-        errorMessage = e.message ?: "Failed to discover LAN servers"
-      } finally {
-        discoveringRemoteServers = false
+        discoveryState = DiscoveryState.Error(
+          e.message ?: "Failed to discover LAN servers"
+        )
       }
     }
+  }
+
+  fun stopDiscovery() {
+    discoveryJob?.cancel()
+    discoveryJob = null
+    val current = discoveryState
+    discoveryState = DiscoveryState.Finished(
+      servers = if (current is DiscoveryState.Discovering) {
+        current.servers
+      } else {
+        emptyList()
+      }
+    )
+  }
+
+  fun resetDiscovery() {
+    discoveryJob?.cancel()
+    discoveryJob = null
+    discoveryState = DiscoveryState.Idle
   }
 
   fun removeInstance(instance: InstanceEntry) {

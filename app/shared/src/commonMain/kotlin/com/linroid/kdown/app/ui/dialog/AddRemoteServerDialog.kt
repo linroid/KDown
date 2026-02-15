@@ -1,34 +1,44 @@
 package com.linroid.kdown.app.ui.dialog
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.linroid.kdown.app.instance.DiscoveredServer
+import com.linroid.kdown.app.state.DiscoveryState
 
 @Composable
 fun AddRemoteServerDialog(
   onDismiss: () -> Unit,
-  discovering: Boolean,
-  discoveredServers: List<DiscoveredServer>,
+  discoveryState: DiscoveryState,
   onDiscover: (port: Int) -> Unit,
+  onStopDiscovery: () -> Unit,
   onAdd: (host: String, port: Int, token: String?) -> Unit,
 ) {
   var host by remember { mutableStateOf("") }
@@ -39,12 +49,22 @@ fun AddRemoteServerDialog(
     it in 1..65535
   } ?: false
 
+  val discovering =
+    discoveryState is DiscoveryState.Discovering
+  val servers = when (discoveryState) {
+    is DiscoveryState.Discovering -> discoveryState.servers
+    is DiscoveryState.Finished -> discoveryState.servers
+    else -> emptyList()
+  }
+
   AlertDialog(
     onDismissRequest = onDismiss,
     title = { Text("Add Remote Server") },
     text = {
       Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()),
+        modifier = Modifier.verticalScroll(
+          rememberScrollState()
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         OutlinedTextField(
@@ -79,37 +99,84 @@ fun AddRemoteServerDialog(
           singleLine = true,
           placeholder = { Text("Optional") },
         )
-        Button(
-          onClick = {
-            onDiscover(port.toIntOrNull() ?: 8642)
-          },
-          enabled = isValidPort && !discovering,
-          modifier = Modifier.fillMaxWidth(),
-        ) {
-          if (discovering) {
+        if (discovering) {
+          OutlinedButton(
+            onClick = onStopDiscovery,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
             CircularProgressIndicator(
-              modifier = Modifier.padding(end = 8.dp).size(16.dp),
+              modifier = Modifier
+                .padding(end = 8.dp)
+                .size(16.dp),
               strokeWidth = 2.dp,
             )
-            Text("Discovering...")
-          } else {
+            Text("Stop")
+          }
+        } else {
+          Button(
+            onClick = {
+              onDiscover(port.toIntOrNull() ?: 8642)
+            },
+            enabled = isValidPort,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
             Text("Discover on LAN")
           }
         }
-        if (discoveredServers.isNotEmpty()) {
-          Text("Discovered Servers")
-          discoveredServers.forEach { server ->
-            AssistChip(
-              onClick = {
-                host = server.host
-                port = server.port.toString()
+        if (discoveryState is DiscoveryState.Error) {
+          Text(
+            text = discoveryState.message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+          )
+        }
+        if (discoveryState is DiscoveryState.Finished &&
+          servers.isEmpty()
+        ) {
+          Text(
+            text = "No servers found on your network",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme
+              .onSurfaceVariant,
+          )
+        }
+        if (servers.isNotEmpty()) {
+          Text(
+            text = "Found on your network",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme
+              .onSurfaceVariant,
+          )
+          servers.forEach { server ->
+            ListItem(
+              headlineContent = { Text(server.name) },
+              supportingContent = {
+                val info = buildString {
+                  append("${server.host}:${server.port}")
+                  if (server.tokenRequired) {
+                    append(" · Token required")
+                  }
+                }
+                Text(info)
               },
-              label = {
-                Text(
-                  "${server.name} · ${server.host}:${server.port}" +
-                    if (server.tokenRequired) " · token required" else ""
+              leadingContent = {
+                Icon(
+                  Icons.Filled.Dns,
+                  contentDescription = null,
                 )
               },
+              modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                  host = server.host
+                  port = server.port.toString()
+                },
+              colors = ListItemDefaults.colors(
+                containerColor =
+                  MaterialTheme.colorScheme.surfaceVariant
+                    .copy(alpha = 0.5f),
+              ),
             )
           }
         }
