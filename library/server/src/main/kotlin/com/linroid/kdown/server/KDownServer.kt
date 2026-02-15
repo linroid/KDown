@@ -30,6 +30,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 
 /**
@@ -69,10 +70,12 @@ import kotlinx.serialization.json.Json
  *
  * @param kdown the KDownApi instance to expose
  * @param config server configuration (host, port, auth, CORS)
+ * @param mdnsRegistrar mDNS service registrar for LAN discovery
  */
 class KDownServer(
   private val kdown: KDownApi,
   private val config: KDownServerConfig = KDownServerConfig.Default,
+  private val mdnsRegistrar: MdnsRegistrar = DnsSdRegistrar(),
 ) {
   private var engine:
     EmbeddedServer<CIOApplicationEngine, *>? = null
@@ -90,15 +93,48 @@ class KDownServer(
       port = config.port,
       module = { configureServer() },
     ).also { it.start(wait = wait) }
+    startMdnsRegistration()
   }
 
   /** Stops the daemon server gracefully. */
   fun stop() {
+    stopMdnsRegistration()
     engine?.stop(
       gracePeriodMillis = 1000,
       timeoutMillis = 5000,
     )
     engine = null
+  }
+
+  private fun startMdnsRegistration() {
+    if (!config.mdnsEnabled) return
+    Thread({
+      runCatching {
+        runBlocking {
+          val tokenValue =
+            if (config.apiToken.isNullOrBlank()) "none"
+            else "required"
+          mdnsRegistrar.register(
+            serviceType = config.mdnsServiceType,
+            serviceName = config.mdnsServiceName,
+            port = config.port,
+            metadata = mapOf("token" to tokenValue),
+          )
+        }
+      }.onFailure { e ->
+        System.err.println(
+          "mDNS registration failed: ${e.message}"
+        )
+      }
+    }, "kdown-mdns").apply { isDaemon = true }.start()
+  }
+
+  private fun stopMdnsRegistration() {
+    runCatching {
+      runBlocking {
+        mdnsRegistrar.unregister()
+      }
+    }
   }
 
   internal fun Application.configureServer() {
