@@ -109,6 +109,18 @@ class AppState(
   var showAddDialog by mutableStateOf(false)
   var showInstanceSelector by mutableStateOf(false)
   var showAddRemoteDialog by mutableStateOf(false)
+
+  /**
+   * Handle "New Task" action. If no backend is available,
+   * show the add-remote-server dialog instead.
+   */
+  fun requestAddDownload() {
+    if (activeInstance.value == null) {
+      showAddRemoteDialog = true
+    } else {
+      showAddDialog = true
+    }
+  }
   var discoveryState by mutableStateOf<DiscoveryState>(
     DiscoveryState.Idle
   )
