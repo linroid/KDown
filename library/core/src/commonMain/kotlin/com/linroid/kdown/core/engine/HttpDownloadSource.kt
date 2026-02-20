@@ -73,16 +73,19 @@ internal class HttpDownloadSource(
     val totalBytes = resolved.totalBytes
     if (totalBytes < 0) throw KDownError.Unsupported
 
+    val connections = if (context.request.connections > 0) {
+      context.request.connections
+    } else {
+      maxConnections
+    }
     val segments = if (
-      resolved.supportsResume && context.request.connections > 1
+      resolved.supportsResume && connections > 1
     ) {
       KDownLogger.i("HttpSource") {
-        "Server supports ranges. Using ${context.request.connections} " +
+        "Server supports ranges. Using $connections " +
           "connections, totalBytes=$totalBytes"
       }
-      SegmentCalculator.calculateSegments(
-        totalBytes, context.request.connections
-      )
+      SegmentCalculator.calculateSegments(totalBytes, connections)
     } else {
       KDownLogger.i("HttpSource") {
         "Single connection, totalBytes=$totalBytes"
@@ -136,8 +139,25 @@ internal class HttpDownloadSource(
       )
     }
 
-    val segments = context.segments.value
+    var segments = context.segments.value
     val totalBytes = state.totalBytes
+
+    val connections = if (context.request.connections > 0) {
+      context.request.connections
+    } else {
+      maxConnections
+    }
+    val incompleteCount = segments.count { !it.isComplete }
+    if (incompleteCount > 0 && connections != incompleteCount) {
+      KDownLogger.i("HttpSource") {
+        "Resegmenting for taskId=${context.taskId}: " +
+          "$incompleteCount -> $connections connections"
+      }
+      segments = SegmentCalculator.resegment(
+        segments, connections,
+      )
+      context.segments.value = segments
+    }
 
     val validatedSegments = validateLocalFile(
       context, segments, totalBytes
