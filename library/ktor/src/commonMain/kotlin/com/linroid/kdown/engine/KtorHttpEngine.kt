@@ -41,7 +41,14 @@ class KtorHttpEngine(
         KDownLogger.e("KtorHttpEngine") {
           "HTTP error ${response.status.value}: ${response.status.description}"
         }
-        throw KDownError.Http(response.status.value, response.status.description)
+        val retryAfter = if (response.status.value == 429) {
+          parseRetryAfter(response.headers["Retry-After"])
+        } else null
+        throw KDownError.Http(
+          response.status.value,
+          response.status.description,
+          retryAfter,
+        )
       }
 
       val acceptRanges = response.headers[HttpHeaders.AcceptRanges]
@@ -92,7 +99,12 @@ class KtorHttpEngine(
           KDownLogger.e("KtorHttpEngine") {
             "HTTP error ${status.value}: ${status.description}"
           }
-          throw KDownError.Http(status.value, status.description)
+          val retryAfter = if (status.value == 429) {
+            parseRetryAfter(response.headers["Retry-After"])
+          } else null
+          throw KDownError.Http(
+            status.value, status.description, retryAfter,
+          )
         }
 
         val channel = response.bodyAsChannel()
@@ -128,6 +140,15 @@ class KtorHttpEngine(
         socketTimeoutMillis = Long.MAX_VALUE
         requestTimeoutMillis = Long.MAX_VALUE
       }
+    }
+
+    /**
+     * Parses the `Retry-After` header value as a number of seconds.
+     * Returns `null` if the value is absent or not a valid integer.
+     * HTTP-date format is not supported and will return `null`.
+     */
+    private fun parseRetryAfter(value: String?): Long? {
+      return value?.trim()?.toLongOrNull()?.takeIf { it > 0 }
     }
   }
 }

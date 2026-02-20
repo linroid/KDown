@@ -246,7 +246,9 @@ internal class DownloadCoordinator(
         preResolved = if (resolved != null) resolvedUrl else null,
       )
 
-      downloadWithRetry(taskId) { source.download(context) }
+      downloadWithRetry(taskId, context) {
+        source.download(context)
+      }
 
       try {
         fileAccessor.flush()
@@ -447,7 +449,7 @@ internal class DownloadCoordinator(
     )
 
     try {
-      downloadWithRetry(taskId) {
+      downloadWithRetry(taskId, context) {
         source.resume(context, resumeState)
       }
 
@@ -482,6 +484,7 @@ internal class DownloadCoordinator(
 
   private suspend fun downloadWithRetry(
     taskId: String,
+    context: DownloadContext? = null,
     block: suspend () -> Unit,
   ) {
     var retryCount = 0
@@ -506,13 +509,49 @@ internal class DownloadCoordinator(
         }
 
         retryCount++
-        val delayMs = config.retryDelayMs * (1 shl (retryCount - 1))
-        KDownLogger.w("Coordinator") {
-          "Retry attempt $retryCount after ${delayMs}ms delay: " +
-            "${error.message}"
+
+        val delayMs: Long
+        if (error is KDownError.Http && error.code == 429 &&
+          context != null
+        ) {
+          reduceConnections(taskId, context)
+          delayMs = error.retryAfterSeconds?.let { it * 1000L }
+            ?: (config.retryDelayMs * (1 shl (retryCount - 1)))
+          KDownLogger.w("Coordinator") {
+            "Rate limited (429). Retry attempt $retryCount " +
+              "after ${delayMs}ms delay, connections=" +
+              "${context.maxConnections}"
+          }
+        } else {
+          delayMs = config.retryDelayMs * (1 shl (retryCount - 1))
+          KDownLogger.w("Coordinator") {
+            "Retry attempt $retryCount after ${delayMs}ms " +
+              "delay: ${error.message}"
+          }
         }
         delay(delayMs)
       }
+    }
+  }
+
+  /**
+   * Halves the number of concurrent connections for a download task
+   * that received HTTP 429 (Too Many Requests), with a minimum of 1.
+   */
+  private fun reduceConnections(
+    taskId: String,
+    context: DownloadContext,
+  ) {
+    val current = when {
+      context.maxConnections > 0 -> context.maxConnections
+      context.request.connections > 0 -> context.request.connections
+      else -> config.maxConnections
+    }
+    val reduced = (current / 2).coerceAtLeast(1)
+    context.maxConnections = reduced
+    KDownLogger.w("Coordinator") {
+      "Reducing connections for taskId=$taskId: " +
+        "$current -> $reduced"
     }
   }
 
