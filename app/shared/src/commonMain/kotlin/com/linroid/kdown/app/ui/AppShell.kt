@@ -406,6 +406,7 @@ fun AppShell(instanceManager: InstanceManager) {
       initialHost = unauthorized?.host ?: "",
       initialPort = unauthorized?.port?.toString()
         ?: "8642",
+      authRequired = unauthorized != null,
     )
   }
 }
