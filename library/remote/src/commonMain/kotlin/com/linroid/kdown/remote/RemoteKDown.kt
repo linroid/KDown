@@ -5,6 +5,7 @@ import com.linroid.kdown.api.DownloadTask
 import com.linroid.kdown.api.KDownApi
 import com.linroid.kdown.api.KDownVersion
 import com.linroid.kdown.api.ResolvedSource
+import com.linroid.kdown.api.ServerStatus
 import com.linroid.kdown.api.SpeedLimit
 import com.linroid.kdown.endpoints.Api
 import com.linroid.kdown.endpoints.model.CreateDownloadRequest
@@ -150,6 +151,12 @@ class RemoteKDown(
     if (sseJob?.isActive == true) return
     _connectionState.value = ConnectionState.Connecting
     sseJob = scope.launch { connectSse() }
+  }
+
+  override suspend fun status(): ServerStatus {
+    val response = httpClient.get(Api.Status())
+    checkSuccess(response)
+    return json.decodeFromString(response.bodyAsText())
   }
 
   override suspend fun setGlobalSpeedLimit(limit: SpeedLimit) {

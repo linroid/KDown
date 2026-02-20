@@ -423,7 +423,7 @@ private fun runServer(args: Array<String>) {
     config = downloadConfig,
     logger = Logger.console(kdownLogLevel),
   )
-  val server = KDownServer(kdown, serverConfig, downloadConfig)
+  val server = KDownServer(kdown, serverConfig)
 
   Runtime.getRuntime().addShutdownHook(Thread {
     println("Shutting down KDown server...")

@@ -133,10 +133,9 @@ class ServerRoutesTest {
         maxConnectionsPerHost = 2,
       ),
     )
+    val kdown = createTestKDown(config = downloadConfig)
     application {
-      val server = createTestServer(
-        downloadConfig = downloadConfig,
-      )
+      val server = createTestServer(kdown = kdown)
       with(server) { configureServer() }
     }
     val response = client.get("/api/status")
@@ -170,13 +169,15 @@ class ServerRoutesTest {
     val status = json.decodeFromString<ServerStatus>(
       response.bodyAsText()
     )
-    assertEquals("127.0.0.1", status.config.server.host)
-    assertEquals(9090, status.config.server.port)
-    assertEquals(false, status.config.server.authEnabled)
-    assertEquals(false, status.config.server.mdnsEnabled)
+    val srv = status.config.server
+    assertNotNull(srv)
+    assertEquals("127.0.0.1", srv.host)
+    assertEquals(9090, srv.port)
+    assertEquals(false, srv.authEnabled)
+    assertEquals(false, srv.mdnsEnabled)
     assertEquals(
       listOf("http://localhost:3000"),
-      status.config.server.corsAllowedHosts,
+      srv.corsAllowedHosts,
     )
   }
 

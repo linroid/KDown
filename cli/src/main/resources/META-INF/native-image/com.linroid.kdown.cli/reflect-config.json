@@ -70,83 +70,83 @@
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.ServerStatus",
+    "name": "com.linroid.kdown.api.ServerStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.ServerStatus$Companion",
+    "name": "com.linroid.kdown.api.ServerStatus$Companion",
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.TaskStats",
+    "name": "com.linroid.kdown.api.TaskStats",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.TaskStats$Companion",
+    "name": "com.linroid.kdown.api.TaskStats$Companion",
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.ConfigStatus",
+    "name": "com.linroid.kdown.api.ConfigStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.ConfigStatus$Companion",
+    "name": "com.linroid.kdown.api.ConfigStatus$Companion",
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.DownloadConfigStatus",
+    "name": "com.linroid.kdown.api.DownloadConfigStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.DownloadConfigStatus$Companion",
+    "name": "com.linroid.kdown.api.DownloadConfigStatus$Companion",
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.QueueConfigStatus",
+    "name": "com.linroid.kdown.api.QueueConfigStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.QueueConfigStatus$Companion",
+    "name": "com.linroid.kdown.api.QueueConfigStatus$Companion",
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.ServerConfigStatus",
+    "name": "com.linroid.kdown.api.ServerConfigStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.ServerConfigStatus$Companion",
+    "name": "com.linroid.kdown.api.ServerConfigStatus$Companion",
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.SystemStatus",
+    "name": "com.linroid.kdown.api.SystemStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.SystemStatus$Companion",
+    "name": "com.linroid.kdown.api.SystemStatus$Companion",
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.StorageStatus",
+    "name": "com.linroid.kdown.api.StorageStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.endpoints.model.StorageStatus$Companion",
+    "name": "com.linroid.kdown.api.StorageStatus$Companion",
     "allDeclaredMethods": true
   },
   {

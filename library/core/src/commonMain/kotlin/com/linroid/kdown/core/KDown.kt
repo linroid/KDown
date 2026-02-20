@@ -1,5 +1,7 @@
 package com.linroid.kdown.core
 
+import com.linroid.kdown.api.ConfigStatus
+import com.linroid.kdown.api.DownloadConfigStatus
 import com.linroid.kdown.api.DownloadProgress
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.api.DownloadSchedule
@@ -8,9 +10,12 @@ import com.linroid.kdown.api.DownloadTask
 import com.linroid.kdown.api.KDownApi
 import com.linroid.kdown.api.KDownError
 import com.linroid.kdown.api.KDownVersion
+import com.linroid.kdown.api.QueueConfigStatus
 import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
+import com.linroid.kdown.api.ServerStatus
 import com.linroid.kdown.api.SpeedLimit
+import com.linroid.kdown.api.TaskStats
 import com.linroid.kdown.core.engine.DelegatingSpeedLimiter
 import com.linroid.kdown.core.engine.DownloadCoordinator
 import com.linroid.kdown.core.engine.DownloadScheduler
@@ -45,6 +50,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.files.Path
 import kotlin.time.Clock
+import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
 
 /**
@@ -71,6 +77,8 @@ class KDown(
   additionalSources: List<DownloadSource> = emptyList(),
   logger: Logger = Logger.None,
 ) : KDownApi {
+  private val startMark = TimeSource.Monotonic.markNow()
+
   private val globalLimiter = DelegatingSpeedLimiter(
     if (config.speedLimit.isUnlimited) {
       SpeedLimiter.Unlimited
@@ -273,6 +281,62 @@ class KDown(
 
   override suspend fun start() {
     loadTasks()
+  }
+
+  override suspend fun status(): ServerStatus {
+    val taskList = tasks.value
+    return ServerStatus(
+      version = KDownVersion.DEFAULT,
+      revision = KDownVersion.REVISION,
+      uptime = startMark.elapsedNow().inWholeSeconds,
+      tasks = TaskStats(
+        total = taskList.size,
+        active = taskList.count { it.state.value.isActive },
+        downloading = taskList.count {
+          it.state.value is DownloadState.Downloading
+        },
+        paused = taskList.count {
+          it.state.value is DownloadState.Paused
+        },
+        queued = taskList.count {
+          it.state.value is DownloadState.Queued
+        },
+        pending = taskList.count {
+          it.state.value is DownloadState.Pending
+        },
+        scheduled = taskList.count {
+          it.state.value is DownloadState.Scheduled
+        },
+        completed = taskList.count {
+          it.state.value is DownloadState.Completed
+        },
+        failed = taskList.count {
+          it.state.value is DownloadState.Failed
+        },
+        canceled = taskList.count {
+          it.state.value is DownloadState.Canceled
+        },
+      ),
+      config = ConfigStatus(
+        download = DownloadConfigStatus(
+          defaultDirectory = config.defaultDirectory,
+          maxConnections = config.maxConnections,
+          retryCount = config.retryCount,
+          retryDelayMs = config.retryDelayMs,
+          bufferSize = config.bufferSize,
+          speedLimit = config.speedLimit.bytesPerSecond,
+        ),
+        queue = QueueConfigStatus(
+          maxConcurrentDownloads =
+            config.queueConfig.maxConcurrentDownloads,
+          maxConnectionsPerHost =
+            config.queueConfig.maxConnectionsPerHost,
+          autoStart = config.queueConfig.autoStart,
+        ),
+      ),
+      system = currentSystemStatus(),
+      storage = currentStorageStatus(config.defaultDirectory),
+    )
   }
 
   /**

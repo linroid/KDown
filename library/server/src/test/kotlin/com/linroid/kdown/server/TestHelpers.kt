@@ -35,14 +35,15 @@ internal class NoOpHttpEngine : HttpEngine {
   override fun close() {}
 }
 
-internal fun createTestKDown(): KDownApi {
-  return KDown(httpEngine = NoOpHttpEngine())
+internal fun createTestKDown(
+  config: DownloadConfig = DownloadConfig.Default,
+): KDownApi {
+  return KDown(httpEngine = NoOpHttpEngine(), config = config)
 }
 
 internal fun createTestServer(
   config: KDownServerConfig = KDownServerConfig.Default,
-  downloadConfig: DownloadConfig = DownloadConfig.Default,
   kdown: KDownApi = createTestKDown(),
 ): KDownServer {
-  return KDownServer(kdown, config, downloadConfig)
+  return KDownServer(kdown, config)
 }
