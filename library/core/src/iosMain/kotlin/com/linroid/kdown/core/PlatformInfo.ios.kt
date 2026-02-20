@@ -2,6 +2,7 @@ package com.linroid.kdown.core
 
 import com.linroid.kdown.api.StorageInfo
 import com.linroid.kdown.api.SystemInfo
+import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSystemFreeSize
 import platform.Foundation.NSFileSystemSize
@@ -20,6 +21,7 @@ internal actual fun currentSystemInfo(): SystemInfo {
   )
 }
 
+@OptIn(ExperimentalForeignApi::class)
 internal actual fun currentStorageInfo(directory: String): StorageInfo {
   val fm = NSFileManager.defaultManager
   val attrs = fm.attributesOfFileSystemForPath(directory, null)
