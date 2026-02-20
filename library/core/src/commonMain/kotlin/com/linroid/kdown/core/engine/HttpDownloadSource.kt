@@ -73,11 +73,7 @@ internal class HttpDownloadSource(
     val totalBytes = resolved.totalBytes
     if (totalBytes < 0) throw KDownError.Unsupported
 
-    val connections = if (context.request.connections > 0) {
-      context.request.connections
-    } else {
-      maxConnections
-    }
+    val connections = effectiveConnections(context)
     val segments = if (
       resolved.supportsResume && connections > 1
     ) {
@@ -142,11 +138,7 @@ internal class HttpDownloadSource(
     var segments = context.segments.value
     val totalBytes = state.totalBytes
 
-    val connections = if (context.request.connections > 0) {
-      context.request.connections
-    } else {
-      maxConnections
-    }
+    val connections = effectiveConnections(context)
     val incompleteCount = segments.count { !it.isComplete }
     if (incompleteCount > 0 && connections != incompleteCount) {
       KDownLogger.i("HttpSource") {
@@ -306,6 +298,20 @@ internal class HttpDownloadSource(
     val finalSegments = currentSegments()
     context.segments.value = finalSegments
     context.onProgress(totalBytes, totalBytes)
+  }
+
+  /**
+   * Returns the number of connections to use, honoring
+   * [DownloadContext.maxConnections] override (set on rate-limit
+   * retries), then [DownloadRequest.connections], then the
+   * engine-level [maxConnections] default.
+   */
+  private fun effectiveConnections(context: DownloadContext): Int {
+    return when {
+      context.maxConnections > 0 -> context.maxConnections
+      context.request.connections > 0 -> context.request.connections
+      else -> maxConnections
+    }
   }
 
   private fun extractDispositionFileName(

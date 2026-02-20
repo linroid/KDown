@@ -24,6 +24,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * @property headers HTTP headers or source-specific metadata headers
  * @property preResolved pre-resolved URL metadata, allowing the
  *   download source to skip its own probe/HEAD request
+ * @property maxConnections override for the number of concurrent
+ *   segment connections. When positive, takes precedence over
+ *   [DownloadRequest.connections]. Reduced automatically on HTTP
+ *   429 (Too Many Requests) responses.
  */
 class DownloadContext(
   val taskId: String,
@@ -35,4 +39,5 @@ class DownloadContext(
   val throttle: suspend (bytes: Int) -> Unit,
   val headers: Map<String, String>,
   val preResolved: ResolvedSource? = null,
+  var maxConnections: Int = 0,
 )
