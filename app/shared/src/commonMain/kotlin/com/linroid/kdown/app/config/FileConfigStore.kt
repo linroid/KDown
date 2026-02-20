@@ -1,6 +1,5 @@
 package com.linroid.kdown.app.config
 
-import com.akuleshov7.ktoml.Toml
 import com.linroid.kdown.api.config.KDownConfig
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -34,7 +33,7 @@ class FileConfigStore(private val path: String) : ConfigStore {
     if (!SystemFileSystem.exists(file)) return KDownConfig()
     val content = SystemFileSystem.source(file).buffered()
       .use { it.readString() }
-    return Toml.decodeFromString(
+    return ConfigStore.toml.decodeFromString(
       KDownConfig.serializer(), content,
     )
   }
@@ -44,9 +43,9 @@ class FileConfigStore(private val path: String) : ConfigStore {
     val tmp = Path(tmpPath)
     file.parent?.let { SystemFileSystem.createDirectories(it) }
     SystemFileSystem.sink(tmp).buffered().use { sink ->
-      sink.writeString(
-        Toml.encodeToString(KDownConfig.serializer(), config),
-      )
+      val encoded = ConfigStore.toml
+        .encodeToString(KDownConfig.serializer(), config)
+      sink.writeString(encoded)
     }
     SystemFileSystem.atomicMove(tmp, file)
   }

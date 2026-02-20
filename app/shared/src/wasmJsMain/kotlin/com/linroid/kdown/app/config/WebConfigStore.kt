@@ -1,6 +1,5 @@
 package com.linroid.kdown.app.config
 
-import com.akuleshov7.ktoml.Toml
 import com.linroid.kdown.api.config.KDownConfig
 import kotlinx.browser.window
 
@@ -13,14 +12,17 @@ class WebConfigStore(
   override fun load(): KDownConfig {
     val content = window.localStorage.getItem(key)
       ?: return KDownConfig()
-    return Toml.decodeFromString(
+    return ConfigStore.toml.decodeFromString(
       KDownConfig.serializer(), content,
     )
   }
 
   override fun save(config: KDownConfig) {
     window.localStorage.setItem(
-      key, Toml.encodeToString(KDownConfig.serializer(), config),
+      key,
+      ConfigStore.toml.encodeToString(
+        KDownConfig.serializer(), config,
+      ),
     )
   }
 }

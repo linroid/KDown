@@ -80,16 +80,6 @@
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.api.TaskStats",
-    "allDeclaredFields": true,
-    "allDeclaredMethods": true,
-    "allDeclaredConstructors": true
-  },
-  {
-    "name": "com.linroid.kdown.api.TaskStats$Companion",
-    "allDeclaredMethods": true
-  },
-  {
     "name": "com.linroid.kdown.api.config.DownloadConfig",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
@@ -110,13 +100,13 @@
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.kdown.api.ServerConfig",
+    "name": "com.linroid.kdown.api.ServerStatus",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.kdown.api.ServerConfig$Companion",
+    "name": "com.linroid.kdown.api.ServerStatus$Companion",
     "allDeclaredMethods": true
   },
   {
@@ -127,16 +117,6 @@
   },
   {
     "name": "com.linroid.kdown.api.SystemInfo$Companion",
-    "allDeclaredMethods": true
-  },
-  {
-    "name": "com.linroid.kdown.api.StorageInfo",
-    "allDeclaredFields": true,
-    "allDeclaredMethods": true,
-    "allDeclaredConstructors": true
-  },
-  {
-    "name": "com.linroid.kdown.api.StorageInfo$Companion",
     "allDeclaredMethods": true
   },
   {

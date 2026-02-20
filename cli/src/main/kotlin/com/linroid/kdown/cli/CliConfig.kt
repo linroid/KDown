@@ -2,17 +2,7 @@ package com.linroid.kdown.cli
 
 import com.akuleshov7.ktoml.Toml
 import com.linroid.kdown.api.config.KDownConfig
-import com.linroid.kdown.server.KDownServerConfig
 import java.io.File
-
-fun KDownConfig.toServerConfig(): KDownServerConfig {
-  return KDownServerConfig(
-    host = server.host,
-    port = server.port,
-    apiToken = server.apiToken,
-    corsAllowedHosts = server.corsAllowedHosts,
-  )
-}
 
 fun loadConfig(path: String): KDownConfig {
   val file = File(path)
@@ -45,6 +35,8 @@ fun defaultConfigPath(): String {
 
 private const val DEFAULT_CONFIG_CONTENT = """# KDown Server Configuration
 # Lines starting with # are comments.
+
+# name = "My KDown"
 
 [server]
 host = "0.0.0.0"

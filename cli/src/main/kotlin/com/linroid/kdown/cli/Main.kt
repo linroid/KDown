@@ -412,7 +412,8 @@ private fun runServer(args: Array<String>) {
   )
 
   val downloadConfig = mergedConfig.download
-  val serverConfig = mergedConfig.toServerConfig()
+  val serverConfig = mergedConfig.server
+  val instanceName = mergedConfig.name ?: "KDown"
 
   File(downloadConfig.defaultDirectory).mkdirs()
 
@@ -424,9 +425,13 @@ private fun runServer(args: Array<String>) {
     httpEngine = KtorHttpEngine(),
     taskStore = taskStore,
     config = downloadConfig,
+    name = instanceName,
     logger = Logger.console(kdownLogLevel),
   )
-  val server = KDownServer(kdown, serverConfig)
+  val server = KDownServer(
+    kdown, serverConfig,
+    mdnsServiceName = instanceName,
+  )
 
   Runtime.getRuntime().addShutdownHook(Thread {
     println("Shutting down KDown server...")
