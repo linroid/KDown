@@ -9,8 +9,8 @@ import com.linroid.kdown.app.config.FileConfigStore
 import com.linroid.kdown.app.instance.InstanceFactory
 import com.linroid.kdown.app.instance.InstanceManager
 import com.linroid.kdown.app.instance.LocalServerHandle
+import com.linroid.kdown.api.config.ServerConfig
 import com.linroid.kdown.server.KDownServer
-import com.linroid.kdown.server.KDownServerConfig
 import com.linroid.kdown.sqlite.DriverFactory
 import com.linroid.kdown.sqlite.createSqliteTaskStore
 import java.io.File
@@ -32,20 +32,22 @@ fun main() = application {
         .takeIf { it != "downloads" }
         ?: defaultDownloadsDir,
     )
+    val instanceName = config.name
+      ?: InetAddress.getLocalHost().hostName
     InstanceManager(
       factory = InstanceFactory(
         taskStore = taskStore,
         downloadConfig = downloadConfig,
-        deviceName = InetAddress.getLocalHost().hostName,
+        deviceName = instanceName,
         localServerFactory = { port, apiToken, kdownApi ->
           val server = KDownServer(
             kdownApi,
-            KDownServerConfig(
+            ServerConfig(
               port = port,
               apiToken = apiToken,
-              mdnsServiceName = InetAddress.getLocalHost().hostName,
               corsAllowedHosts = listOf("*"),
-            )
+            ),
+            mdnsServiceName = instanceName,
           )
           server.start(wait = false)
           object : LocalServerHandle {

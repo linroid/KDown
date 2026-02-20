@@ -35,7 +35,7 @@ class InstanceFactory(
   ),
   val deviceName: String = "Embedded",
   private val embeddedFactory: (() -> KDown)? = taskStore?.let { ts ->
-    { createDefaultEmbeddedKDown(ts, downloadConfig) }
+    { createDefaultEmbeddedKDown(ts, downloadConfig, deviceName) }
   },
   private val localServerFactory:
     ((port: Int, apiToken: String?, KDownApi) -> LocalServerHandle)? = null,
@@ -109,11 +109,13 @@ class InstanceFactory(
 private fun createDefaultEmbeddedKDown(
   taskStore: TaskStore,
   config: DownloadConfig,
+  name: String,
 ): KDown {
   return KDown(
     httpEngine = KtorHttpEngine(),
     taskStore = taskStore,
     config = config,
+    name = name,
     logger = Logger.console(),
   )
 }

@@ -29,11 +29,13 @@ fun MainViewController() = ComposeUIViewController {
         .takeIf { it != "downloads" }
         ?: downloadsDir,
     )
+    val instanceName = config.name
+      ?: UIDevice.currentDevice.name
     InstanceManager(
       factory = InstanceFactory(
         taskStore = taskStore,
         downloadConfig = downloadConfig,
-        deviceName = UIDevice.currentDevice.name,
+        deviceName = instanceName,
       ),
       initialRemotes = config.remote,
       configStore = configStore,

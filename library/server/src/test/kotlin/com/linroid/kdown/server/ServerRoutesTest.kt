@@ -5,11 +5,8 @@ import com.linroid.kdown.api.KDownStatus
 import com.linroid.kdown.api.SpeedLimit
 import com.linroid.kdown.api.config.DownloadConfig
 import com.linroid.kdown.api.config.QueueConfig
-import com.linroid.kdown.endpoints.model.CreateDownloadRequest
-import com.linroid.kdown.endpoints.model.TaskResponse
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -60,70 +57,6 @@ class ServerRoutesTest {
   }
 
   @Test
-  fun `status tasks total increments after download`() =
-    testApplication {
-      val kdown = createTestKDown()
-      application {
-        val server = createTestServer(kdown = kdown)
-        with(server) { configureServer() }
-      }
-      val client = createClient {
-        install(ContentNegotiation) { json(json) }
-      }
-
-      client.post("/api/tasks") {
-        contentType(ContentType.Application.Json)
-        setBody(
-          CreateDownloadRequest(
-            url = "https://example.com/file.zip",
-            directory = "/tmp",
-          )
-        )
-      }
-
-      val response = client.get("/api/status")
-      val status = json.decodeFromString<KDownStatus>(
-        response.bodyAsText()
-      )
-      assertEquals(1, status.tasks.total)
-    }
-
-  @Test
-  fun `status counts canceled tasks as inactive`() =
-    testApplication {
-      val kdown = createTestKDown()
-      application {
-        val server = createTestServer(kdown = kdown)
-        with(server) { configureServer() }
-      }
-      val client = createClient {
-        install(ContentNegotiation) { json(json) }
-      }
-
-      val createResponse = client.post("/api/tasks") {
-        contentType(ContentType.Application.Json)
-        setBody(
-          CreateDownloadRequest(
-            url = "https://example.com/file.zip",
-            directory = "/tmp",
-          )
-        )
-      }
-      val task = json.decodeFromString<TaskResponse>(
-        createResponse.bodyAsText()
-      )
-      client.post("/api/tasks/${task.taskId}/cancel")
-
-      val response = client.get("/api/status")
-      val status = json.decodeFromString<KDownStatus>(
-        response.bodyAsText()
-      )
-      assertEquals(1, status.tasks.total)
-      assertEquals(0, status.tasks.active)
-      assertEquals(1, status.tasks.canceled)
-    }
-
-  @Test
   fun `status includes download config`() = testApplication {
     val downloadConfig = DownloadConfig(
       defaultDirectory = "/tmp/test-downloads",
@@ -160,35 +93,6 @@ class ServerRoutesTest {
   }
 
   @Test
-  fun `status includes server config`() = testApplication {
-    val serverConfig = KDownServerConfig(
-      host = "127.0.0.1",
-      port = 9090,
-      apiToken = null,
-      mdnsEnabled = false,
-      corsAllowedHosts = listOf("http://localhost:3000"),
-    )
-    application {
-      val server = createTestServer(config = serverConfig)
-      with(server) { configureServer() }
-    }
-    val response = client.get("/api/status")
-    val status = json.decodeFromString<KDownStatus>(
-      response.bodyAsText()
-    )
-    val srv = status.server
-    assertNotNull(srv)
-    assertEquals("127.0.0.1", srv.host)
-    assertEquals(9090, srv.port)
-    assertEquals(false, srv.authEnabled)
-    assertEquals(false, srv.mdnsEnabled)
-    assertEquals(
-      listOf("http://localhost:3000"),
-      srv.corsAllowedHosts,
-    )
-  }
-
-  @Test
   fun `status includes system info`() = testApplication {
     application {
       val server = createTestServer()
@@ -215,7 +119,7 @@ class ServerRoutesTest {
     val status = json.decodeFromString<KDownStatus>(
       response.bodyAsText()
     )
-    assertTrue(status.storage.downloadDirectory.isNotBlank())
+    assertTrue(status.system.downloadDirectory.isNotBlank())
   }
 
   @Test

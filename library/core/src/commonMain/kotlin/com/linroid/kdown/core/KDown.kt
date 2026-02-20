@@ -10,7 +10,6 @@ import com.linroid.kdown.api.KDownError
 import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
 import com.linroid.kdown.api.KDownStatus
-import com.linroid.kdown.api.TaskStats
 import com.linroid.kdown.api.config.DownloadConfig
 import com.linroid.kdown.core.engine.DelegatingSpeedLimiter
 import com.linroid.kdown.core.engine.DownloadCoordinator
@@ -55,6 +54,7 @@ import kotlin.uuid.Uuid
  * @param httpEngine the HTTP engine for HTTP/HTTPS downloads
  * @param taskStore persistent storage for task records
  * @param config global download configuration
+ * @param name user-visible instance name included in [status]
  * @param fileAccessorFactory factory for creating platform file writers
  * @param fileNameResolver strategy for resolving download file names
  * @param additionalSources extra [DownloadSource] implementations
@@ -65,6 +65,7 @@ class KDown(
   private val httpEngine: HttpEngine,
   private val taskStore: TaskStore = InMemoryTaskStore(),
   private val config: DownloadConfig = DownloadConfig.Default,
+  private val name: String = "KDown",
   private val fileAccessorFactory: (Path) -> FileAccessor = { path ->
     FileAccessor(path)
   },
@@ -279,42 +280,13 @@ class KDown(
   }
 
   override suspend fun status(): KDownStatus {
-    val taskList = tasks.value
     return KDownStatus(
+      name = name,
       version = KDownApi.VERSION,
       revision = KDownApi.REVISION,
       uptime = startMark.elapsedNow().inWholeSeconds,
-      tasks = TaskStats(
-        total = taskList.size,
-        active = taskList.count { it.state.value.isActive },
-        downloading = taskList.count {
-          it.state.value is DownloadState.Downloading
-        },
-        paused = taskList.count {
-          it.state.value is DownloadState.Paused
-        },
-        queued = taskList.count {
-          it.state.value is DownloadState.Queued
-        },
-        pending = taskList.count {
-          it.state.value is DownloadState.Pending
-        },
-        scheduled = taskList.count {
-          it.state.value is DownloadState.Scheduled
-        },
-        completed = taskList.count {
-          it.state.value is DownloadState.Completed
-        },
-        failed = taskList.count {
-          it.state.value is DownloadState.Failed
-        },
-        canceled = taskList.count {
-          it.state.value is DownloadState.Canceled
-        },
-      ),
       config = currentConfig,
-      system = currentSystemInfo(),
-      storage = currentStorageInfo(config.defaultDirectory),
+      system = currentSystemInfo(config.defaultDirectory),
     )
   }
 

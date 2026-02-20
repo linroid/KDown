@@ -18,7 +18,7 @@ import com.linroid.kdown.app.instance.LocalServerHandle
 import com.linroid.kdown.app.instance.ServerState
 import com.linroid.kdown.core.log.KDownLogger
 import com.linroid.kdown.server.KDownServer
-import com.linroid.kdown.server.KDownServerConfig
+import com.linroid.kdown.api.config.ServerConfig
 import com.linroid.kdown.sqlite.DriverFactory
 import com.linroid.kdown.sqlite.createSqliteTaskStore
 import kotlinx.coroutines.CoroutineScope
@@ -63,21 +63,23 @@ class KDownService : Service() {
         .takeIf { it != "downloads" }
         ?: downloadsDir,
     )
+    val instanceName = config.name
+      ?: android.os.Build.MODEL
     instanceManager = InstanceManager(
       factory = InstanceFactory(
         taskStore = taskStore,
         downloadConfig = downloadConfig,
-        deviceName = android.os.Build.MODEL,
+        deviceName = instanceName,
         localServerFactory = { port, apiToken, kdownApi ->
           KDownLogger.i(TAG) { "Starting local server on port $port" }
           val server = KDownServer(
             kdownApi,
-            KDownServerConfig(
+            ServerConfig(
               port = port,
               apiToken = apiToken,
-              mdnsServiceName = android.os.Build.MODEL,
               corsAllowedHosts = listOf("*"),
             ),
+            mdnsServiceName = instanceName,
           )
           server.start(wait = false)
           KDownLogger.i(TAG) { "Local server started on port $port" }

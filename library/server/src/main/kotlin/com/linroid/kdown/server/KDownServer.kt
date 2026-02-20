@@ -5,6 +5,7 @@ import com.linroid.kdown.core.log.KDownLogger
 import com.linroid.kdown.endpoints.model.ErrorResponse
 import com.linroid.kdown.server.api.downloadRoutes
 import com.linroid.kdown.server.api.eventRoutes
+import com.linroid.kdown.api.config.ServerConfig
 import com.linroid.kdown.server.api.serverRoutes
 import com.linroid.kdown.server.mdns.MdnsRegistrar
 import com.linroid.kdown.server.mdns.defaultMdnsRegistrar
@@ -85,7 +86,8 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class KDownServer(
   private val kdown: KDownApi,
-  private val config: KDownServerConfig = KDownServerConfig.Default,
+  private val config: ServerConfig = ServerConfig(),
+  private val mdnsServiceName: String = "KDown",
   private val mdnsRegistrar: MdnsRegistrar = defaultMdnsRegistrar(),
 ) {
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -125,21 +127,21 @@ class KDownServer(
         else "required"
       KDownLogger.d(TAG) {
         "Registering mDNS service:" +
-          " name=${config.mdnsServiceName}," +
-          " type=${config.mdnsServiceType}," +
+          " name=$mdnsServiceName," +
+          " type=${ServerConfig.MDNS_SERVICE_TYPE}," +
           " port=${config.port}," +
           " token=$tokenValue"
       }
       try {
         mdnsRegistrar.register(
-          serviceType = config.mdnsServiceType,
-          serviceName = config.mdnsServiceName,
+          serviceType = ServerConfig.MDNS_SERVICE_TYPE,
+          serviceName = mdnsServiceName,
           port = config.port,
           metadata = mapOf("token" to tokenValue),
         )
         KDownLogger.i(TAG) {
-          "mDNS registered: ${config.mdnsServiceName}" +
-            " (${config.mdnsServiceType})"
+          "mDNS registered: $mdnsServiceName" +
+            " (${ServerConfig.MDNS_SERVICE_TYPE})"
         }
         awaitCancellation()
       } catch (e: CancellationException) {
@@ -230,10 +232,10 @@ class KDownServer(
     routing {
       if (config.apiToken != null) {
         authenticate(AUTH_API) {
-          apiRoutes(kdown, config)
+          apiRoutes(kdown)
         }
       } else {
-        apiRoutes(kdown, config)
+        apiRoutes(kdown)
       }
       webResources()
     }
@@ -245,11 +247,8 @@ class KDownServer(
   }
 }
 
-private fun Route.apiRoutes(
-  kdown: KDownApi,
-  serverConfig: KDownServerConfig,
-) {
-  serverRoutes(kdown, serverConfig)
+private fun Route.apiRoutes(kdown: KDownApi) {
+  serverRoutes(kdown)
   downloadRoutes(kdown)
   eventRoutes(kdown)
 }
