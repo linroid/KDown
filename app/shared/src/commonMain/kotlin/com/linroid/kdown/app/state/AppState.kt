@@ -108,7 +108,9 @@ class AppState(
   var errorMessage by mutableStateOf<String?>(null)
   var showAddDialog by mutableStateOf(false)
   var showInstanceSelector by mutableStateOf(false)
-  var showAddRemoteDialog by mutableStateOf(false)
+  var showAddRemoteDialog by mutableStateOf(
+    activeInstance.value == null
+  )
 
   /**
    * Handle "New Task" action. If no backend is available,
