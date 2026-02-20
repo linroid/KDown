@@ -43,6 +43,7 @@ class KtorHttpEngine(
         }
         val retryAfter = if (response.status.value == 429) {
           parseRetryAfter(response.headers["Retry-After"])
+            ?: parseRateLimitLong(response.headers["RateLimit-Reset"])
         } else null
         throw KDownError.Http(
           response.status.value,
@@ -57,6 +58,12 @@ class KtorHttpEngine(
       val contentLength = response.contentLength()
       val contentDisposition =
         response.headers[HttpHeaders.ContentDisposition]
+      val rateLimitRemaining = parseRateLimitLong(
+        response.headers["RateLimit-Remaining"]
+      )
+      val rateLimitReset = parseRateLimitLong(
+        response.headers["RateLimit-Reset"]
+      )
 
       return ServerInfo(
         contentLength = contentLength,
@@ -64,6 +71,8 @@ class KtorHttpEngine(
         etag = etag,
         lastModified = lastModified,
         contentDisposition = contentDisposition,
+        rateLimitRemaining = rateLimitRemaining,
+        rateLimitReset = rateLimitReset,
       )
     } catch (e: CancellationException) {
       throw e
@@ -101,6 +110,7 @@ class KtorHttpEngine(
           }
           val retryAfter = if (status.value == 429) {
             parseRetryAfter(response.headers["Retry-After"])
+              ?: parseRateLimitLong(response.headers["RateLimit-Reset"])
           } else null
           throw KDownError.Http(
             status.value, status.description, retryAfter,
@@ -149,6 +159,14 @@ class KtorHttpEngine(
      */
     private fun parseRetryAfter(value: String?): Long? {
       return value?.trim()?.toLongOrNull()?.takeIf { it > 0 }
+    }
+
+    /**
+     * Parses a rate limit header value as a non-negative long.
+     * Accepts `0` (unlike [parseRetryAfter] which requires > 0).
+     */
+    private fun parseRateLimitLong(value: String?): Long? {
+      return value?.trim()?.toLongOrNull()?.takeIf { it >= 0 }
     }
   }
 }
