@@ -11,12 +11,12 @@ import kotlin.test.assertTrue
 class DownloadRequestTest {
 
   @Test
-  fun defaultConnections_isOne() {
+  fun defaultConnections_isFour() {
     val request = DownloadRequest(
       url = "https://example.com/file",
       directory = "/tmp",
     )
-    assertEquals(1, request.connections)
+    assertEquals(4, request.connections)
   }
 
   @Test

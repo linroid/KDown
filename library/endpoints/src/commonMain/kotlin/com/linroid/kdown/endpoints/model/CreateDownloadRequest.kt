@@ -20,7 +20,7 @@ data class CreateDownloadRequest(
   val url: String,
   val directory: String,
   val fileName: String? = null,
-  val connections: Int = 1,
+  val connections: Int = 4,
   val headers: Map<String, String> = emptyMap(),
   val priority: String = "NORMAL",
   val speedLimitBytesPerSecond: Long = 0,

@@ -43,7 +43,7 @@ data class DownloadRequest(
   val url: String,
   val directory: String? = null,
   val fileName: String? = null,
-  val connections: Int = 1,
+  val connections: Int = 4,
   val headers: Map<String, String> = emptyMap(),
   val properties: Map<String, String> = emptyMap(),
   val speedLimit: SpeedLimit = SpeedLimit.Unlimited,
