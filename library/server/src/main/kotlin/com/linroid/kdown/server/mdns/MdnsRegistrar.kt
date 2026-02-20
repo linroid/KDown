@@ -1,4 +1,4 @@
-package com.linroid.kdown.server
+package com.linroid.kdown.server.mdns
 
 /**
  * Interface for mDNS/DNS-SD service registration.
@@ -24,4 +24,14 @@ interface MdnsRegistrar {
 
   /** Unregisters the service, removing it from mDNS discovery. */
   suspend fun unregister()
+}
+
+/**
+ * Returns [NativeMdnsRegistrar] on macOS (where JmDNS conflicts with
+ * the system mDNSResponder), [DnsSdRegistrar] on other platforms.
+ */
+internal fun defaultMdnsRegistrar(): MdnsRegistrar {
+  val os = System.getProperty("os.name", "").lowercase()
+  return if (os.contains("mac")) NativeMdnsRegistrar()
+  else DnsSdRegistrar()
 }

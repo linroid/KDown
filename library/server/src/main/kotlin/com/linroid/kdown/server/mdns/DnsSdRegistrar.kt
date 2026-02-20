@@ -1,13 +1,13 @@
-package com.linroid.kdown.server
+package com.linroid.kdown.server.mdns
 
 import com.appstractive.dnssd.NetService
 import com.appstractive.dnssd.createNetService
 
 /**
- * [MdnsRegistrar] implementation using dns-sd-kt.
+ * [MdnsRegistrar] implementation using dns-sd-kt (JmDNS on JVM).
  *
- * Uses [createNetService] for registration (not `publishService`,
- * which requires `Dispatchers.Main`).
+ * Works well on Linux and Windows where no system mDNS daemon
+ * conflicts with JmDNS. On macOS, prefer [NativeMdnsRegistrar].
  */
 internal class DnsSdRegistrar : MdnsRegistrar {
   @Volatile private var service: NetService? = null

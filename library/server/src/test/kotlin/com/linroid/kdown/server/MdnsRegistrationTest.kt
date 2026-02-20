@@ -1,6 +1,7 @@
 package com.linroid.kdown.server
 
 import com.linroid.kdown.api.MDNS_SERVICE_TYPE
+import com.linroid.kdown.server.mdns.MdnsRegistrar
 import java.net.ServerSocket
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit

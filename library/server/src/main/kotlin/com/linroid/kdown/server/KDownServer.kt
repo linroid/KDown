@@ -1,7 +1,10 @@
 package com.linroid.kdown.server
 
 import com.linroid.kdown.api.KDownApi
+import com.linroid.kdown.core.log.KDownLogger
 import com.linroid.kdown.endpoints.model.ErrorResponse
+import com.linroid.kdown.server.mdns.MdnsRegistrar
+import com.linroid.kdown.server.mdns.defaultMdnsRegistrar
 import com.linroid.kdown.server.api.downloadRoutes
 import com.linroid.kdown.server.api.eventRoutes
 import com.linroid.kdown.server.api.serverRoutes
@@ -75,7 +78,7 @@ import kotlinx.serialization.json.Json
 class KDownServer(
   private val kdown: KDownApi,
   private val config: KDownServerConfig = KDownServerConfig.Default,
-  private val mdnsRegistrar: MdnsRegistrar = DnsSdRegistrar(),
+  private val mdnsRegistrar: MdnsRegistrar = defaultMdnsRegistrar(),
 ) {
   private var engine:
     EmbeddedServer<CIOApplicationEngine, *>? = null
@@ -114,6 +117,13 @@ class KDownServer(
           val tokenValue =
             if (config.apiToken.isNullOrBlank()) "none"
             else "required"
+          KDownLogger.d(TAG) {
+            "Registering mDNS service:" +
+              " name=${config.mdnsServiceName}," +
+              " type=${config.mdnsServiceType}," +
+              " port=${config.port}," +
+              " token=$tokenValue"
+          }
           mdnsRegistrar.register(
             serviceType = config.mdnsServiceType,
             serviceName = config.mdnsServiceName,
@@ -121,10 +131,15 @@ class KDownServer(
             metadata = mapOf("token" to tokenValue),
           )
         }
+      }.onSuccess {
+        KDownLogger.i(TAG) {
+          "mDNS registered: ${config.mdnsServiceName}" +
+            " (${config.mdnsServiceType})"
+        }
       }.onFailure { e ->
-        System.err.println(
+        KDownLogger.w(TAG, throwable = e) {
           "mDNS registration failed: ${e.message}"
-        )
+        }
       }
     }, "kdown-mdns").apply { isDaemon = true }.start()
   }
@@ -133,6 +148,10 @@ class KDownServer(
     runCatching {
       runBlocking {
         mdnsRegistrar.unregister()
+      }
+    }.onFailure { e ->
+      KDownLogger.w(TAG, throwable = e) {
+        "mDNS unregister failed: ${e.message}"
       }
     }
   }
@@ -212,6 +231,10 @@ class KDownServer(
       eventRoutes(kdown)
       webResources()
     }
+  }
+
+  companion object {
+    private const val TAG = "KDownServer"
   }
 }
 
