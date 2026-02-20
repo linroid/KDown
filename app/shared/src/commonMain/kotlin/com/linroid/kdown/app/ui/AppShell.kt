@@ -30,6 +30,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -65,6 +66,15 @@ fun AppShell(instanceManager: InstanceManager) {
 
   DisposableEffect(Unit) {
     onDispose { instanceManager.close() }
+  }
+
+  val instances by appState.instances.collectAsState()
+  // Auto-show add-remote-server dialog when no instances
+  // are configured (remote-only mode without auto-connect).
+  LaunchedEffect(instances) {
+    if (instances.isEmpty()) {
+      appState.showAddRemoteDialog = true
+    }
   }
 
   val sortedTasks by appState.sortedTasks.collectAsState()
