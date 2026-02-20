@@ -75,6 +75,23 @@ class SegmentCalculatorTest {
   }
 
   @Test
+  fun largeFile_exceedingIntMax_fourConnections() {
+    // 2.28 GB — exceeds Int.MAX_VALUE (2,147,483,647)
+    val totalBytes = 2_283_360_256L
+    val segments = SegmentCalculator.calculateSegments(
+      totalBytes, connections = 4,
+    )
+    assertEquals(4, segments.size)
+
+    for (i in 1 until segments.size) {
+      assertEquals(segments[i - 1].end + 1, segments[i].start)
+    }
+    assertEquals(0L, segments.first().start)
+    assertEquals(totalBytes - 1, segments.last().end)
+    assertEquals(totalBytes, segments.sumOf { it.totalBytes })
+  }
+
+  @Test
   fun allSegments_startWithZeroDownloadedBytes() {
     val segments = SegmentCalculator.calculateSegments(totalBytes = 500, connections = 3)
     assertTrue(segments.all { it.downloadedBytes == 0L })

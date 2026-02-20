@@ -8,7 +8,8 @@ internal object SegmentCalculator {
     require(totalBytes > 0) { "totalBytes must be positive" }
     require(connections > 0) { "connections must be positive" }
 
-    val effectiveConnections = minOf(connections, totalBytes.toInt().coerceAtLeast(1))
+    val effectiveConnections =
+      minOf(connections.toLong(), totalBytes.coerceAtLeast(1)).toInt()
     val segmentSize = totalBytes / effectiveConnections
     val remainder = totalBytes % effectiveConnections
 
