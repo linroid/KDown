@@ -2,6 +2,7 @@ package com.linroid.kdown.server
 
 import com.linroid.kdown.api.KDownApi
 import com.linroid.kdown.api.KDownError
+import com.linroid.kdown.core.DownloadConfig
 import com.linroid.kdown.core.KDown
 import com.linroid.kdown.core.engine.HttpEngine
 import com.linroid.kdown.core.engine.ServerInfo
@@ -40,7 +41,8 @@ internal fun createTestKDown(): KDownApi {
 
 internal fun createTestServer(
   config: KDownServerConfig = KDownServerConfig.Default,
+  downloadConfig: DownloadConfig = DownloadConfig.Default,
   kdown: KDownApi = createTestKDown(),
 ): KDownServer {
-  return KDownServer(kdown, config)
+  return KDownServer(kdown, config, downloadConfig)
 }

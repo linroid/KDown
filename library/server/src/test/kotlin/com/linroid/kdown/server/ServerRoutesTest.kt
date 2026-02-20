@@ -1,5 +1,7 @@
 package com.linroid.kdown.server
 
+import com.linroid.kdown.core.DownloadConfig
+import com.linroid.kdown.core.QueueConfig
 import com.linroid.kdown.endpoints.model.CreateDownloadRequest
 import com.linroid.kdown.endpoints.model.ServerStatus
 import com.linroid.kdown.endpoints.model.SpeedLimitRequest
@@ -18,6 +20,8 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class ServerRoutesTest {
 
@@ -27,7 +31,7 @@ class ServerRoutesTest {
   }
 
   @Test
-  fun `status includes version`() = testApplication {
+  fun `status includes version and revision`() = testApplication {
     application {
       val server = createTestServer()
       with(server) { configureServer() }
@@ -38,10 +42,24 @@ class ServerRoutesTest {
       response.bodyAsText()
     )
     assertEquals("1.0.0", status.version)
+    assertNotNull(status.revision)
   }
 
   @Test
-  fun `status totalTasks increments after download`() =
+  fun `status includes uptime`() = testApplication {
+    application {
+      val server = createTestServer()
+      with(server) { configureServer() }
+    }
+    val response = client.get("/api/status")
+    val status = json.decodeFromString<ServerStatus>(
+      response.bodyAsText()
+    )
+    assertTrue(status.uptime >= 0)
+  }
+
+  @Test
+  fun `status tasks total increments after download`() =
     testApplication {
       val kdown = createTestKDown()
       application {
@@ -52,7 +70,6 @@ class ServerRoutesTest {
         install(ContentNegotiation) { json(json) }
       }
 
-      // Create a task
       client.post("/api/tasks") {
         contentType(ContentType.Application.Json)
         setBody(
@@ -67,7 +84,7 @@ class ServerRoutesTest {
       val status = json.decodeFromString<ServerStatus>(
         response.bodyAsText()
       )
-      assertEquals(1, status.totalTasks)
+      assertEquals(1, status.tasks.total)
     }
 
   @Test
@@ -100,9 +117,98 @@ class ServerRoutesTest {
       val status = json.decodeFromString<ServerStatus>(
         response.bodyAsText()
       )
-      assertEquals(1, status.totalTasks)
-      assertEquals(0, status.activeTasks)
+      assertEquals(1, status.tasks.total)
+      assertEquals(0, status.tasks.active)
+      assertEquals(1, status.tasks.canceled)
     }
+
+  @Test
+  fun `status includes download config`() = testApplication {
+    val downloadConfig = DownloadConfig(
+      defaultDirectory = "/tmp/test-downloads",
+      maxConnections = 8,
+      retryCount = 5,
+      queueConfig = QueueConfig(
+        maxConcurrentDownloads = 6,
+        maxConnectionsPerHost = 2,
+      ),
+    )
+    application {
+      val server = createTestServer(
+        downloadConfig = downloadConfig,
+      )
+      with(server) { configureServer() }
+    }
+    val response = client.get("/api/status")
+    val status = json.decodeFromString<ServerStatus>(
+      response.bodyAsText()
+    )
+    assertEquals(
+      "/tmp/test-downloads",
+      status.config.download.defaultDirectory,
+    )
+    assertEquals(8, status.config.download.maxConnections)
+    assertEquals(5, status.config.download.retryCount)
+    assertEquals(6, status.config.queue.maxConcurrentDownloads)
+    assertEquals(2, status.config.queue.maxConnectionsPerHost)
+  }
+
+  @Test
+  fun `status includes server config`() = testApplication {
+    val serverConfig = KDownServerConfig(
+      host = "127.0.0.1",
+      port = 9090,
+      apiToken = null,
+      mdnsEnabled = false,
+      corsAllowedHosts = listOf("http://localhost:3000"),
+    )
+    application {
+      val server = createTestServer(config = serverConfig)
+      with(server) { configureServer() }
+    }
+    val response = client.get("/api/status")
+    val status = json.decodeFromString<ServerStatus>(
+      response.bodyAsText()
+    )
+    assertEquals("127.0.0.1", status.config.server.host)
+    assertEquals(9090, status.config.server.port)
+    assertEquals(false, status.config.server.authEnabled)
+    assertEquals(false, status.config.server.mdnsEnabled)
+    assertEquals(
+      listOf("http://localhost:3000"),
+      status.config.server.corsAllowedHosts,
+    )
+  }
+
+  @Test
+  fun `status includes system info`() = testApplication {
+    application {
+      val server = createTestServer()
+      with(server) { configureServer() }
+    }
+    val response = client.get("/api/status")
+    val status = json.decodeFromString<ServerStatus>(
+      response.bodyAsText()
+    )
+    assertTrue(status.system.os.isNotBlank())
+    assertTrue(status.system.arch.isNotBlank())
+    assertTrue(status.system.javaVersion.isNotBlank())
+    assertTrue(status.system.availableProcessors > 0)
+    assertTrue(status.system.maxMemory > 0)
+  }
+
+  @Test
+  fun `status includes storage info`() = testApplication {
+    application {
+      val server = createTestServer()
+      with(server) { configureServer() }
+    }
+    val response = client.get("/api/status")
+    val status = json.decodeFromString<ServerStatus>(
+      response.bodyAsText()
+    )
+    assertTrue(status.storage.downloadDirectory.isNotBlank())
+  }
 
   @Test
   fun `PUT global speed-limit succeeds`() = testApplication {

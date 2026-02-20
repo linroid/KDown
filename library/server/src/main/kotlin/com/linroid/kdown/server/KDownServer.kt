@@ -1,6 +1,7 @@
 package com.linroid.kdown.server
 
 import com.linroid.kdown.api.KDownApi
+import com.linroid.kdown.core.DownloadConfig
 import com.linroid.kdown.core.log.KDownLogger
 import com.linroid.kdown.endpoints.model.ErrorResponse
 import com.linroid.kdown.server.api.downloadRoutes
@@ -80,13 +81,17 @@ import kotlin.coroutines.cancellation.CancellationException
  *
  * @param kdown the KDownApi instance to expose
  * @param config server configuration (host, port, auth, CORS)
+ * @param downloadConfig download engine configuration for the
+ *   status endpoint
  * @param mdnsRegistrar mDNS service registrar for LAN discovery
  */
 class KDownServer(
   private val kdown: KDownApi,
   private val config: KDownServerConfig = KDownServerConfig.Default,
+  private val downloadConfig: DownloadConfig = DownloadConfig.Default,
   private val mdnsRegistrar: MdnsRegistrar = defaultMdnsRegistrar(),
 ) {
+  private val startedAt: Long = System.currentTimeMillis()
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
   private var engine: EmbeddedServer<CIOApplicationEngine, *> = embeddedServer(
     CIO,
@@ -231,7 +236,7 @@ class KDownServer(
     }
 
     routing {
-      serverRoutes(kdown)
+      serverRoutes(kdown, downloadConfig, config, startedAt)
       downloadRoutes(kdown)
       eventRoutes(kdown)
       webResources()

@@ -25,8 +25,8 @@ class KDownServerTest {
       val status = json.decodeFromString<ServerStatus>(
         response.bodyAsText()
       )
-      assertEquals(0, status.totalTasks)
-      assertEquals(0, status.activeTasks)
+      assertEquals(0, status.tasks.total)
+      assertEquals(0, status.tasks.active)
     }
 
   @Test
