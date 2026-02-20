@@ -15,9 +15,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.defaultForFileExtension
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCallPipeline
-import io.ktor.server.application.call
 import io.ktor.server.application.install
+import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
@@ -26,6 +25,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
+import io.ktor.server.request.uri
 import io.ktor.server.resources.Resources
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
@@ -212,25 +212,10 @@ class KDownServer(
       }
     }
 
-    if (config.apiToken != null) {
-      intercept(ApplicationCallPipeline.Call) {
-        val token = call.request.header(
-          HttpHeaders.Authorization,
-        )
-        if (token != "Bearer ${config.apiToken}") {
-          call.respond(
-            HttpStatusCode.Unauthorized,
-            ErrorResponse(
-              "unauthorized",
-              "Invalid or missing authorization token",
-            ),
-          )
-          finish()
-        }
-      }
-    }
-
     routing {
+      config.apiToken?.let { apiToken ->
+        install(BearerAuth) { token = apiToken }
+      }
       serverRoutes(kdown)
       downloadRoutes(kdown)
       eventRoutes(kdown)
@@ -264,6 +249,35 @@ private fun Route.webResources() {
       call.respondBytes(
         resource.readBytes(),
         contentType,
+      )
+    }
+  }
+}
+
+private class BearerAuthConfig {
+  var token: String = ""
+}
+
+/**
+ * Route-scoped plugin that enforces Bearer token authentication
+ * on `/api/` requests. Non-API requests (e.g. static web resources)
+ * are passed through without authentication.
+ */
+private val BearerAuth = createRouteScopedPlugin(
+  name = "BearerAuth",
+  createConfiguration = ::BearerAuthConfig,
+) {
+  val expectedToken = pluginConfig.token
+  onCall { call ->
+    if (!call.request.uri.startsWith("/api/")) return@onCall
+    val header = call.request.header(HttpHeaders.Authorization)
+    if (header != "Bearer $expectedToken") {
+      call.respond(
+        HttpStatusCode.Unauthorized,
+        ErrorResponse(
+          "unauthorized",
+          "Invalid or missing authorization token",
+        ),
       )
     }
   }
