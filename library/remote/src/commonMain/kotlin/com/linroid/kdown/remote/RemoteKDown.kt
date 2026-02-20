@@ -47,13 +47,20 @@ import kotlinx.serialization.json.Json
  * Remote implementation of [KDownApi] that communicates with a
  * KDown daemon server over HTTP + SSE.
  *
- * @param baseUrl server base URL (e.g., "http://localhost:8642")
+ * @param host server hostname or IP address
+ * @param port server port (default 8642)
  * @param apiToken optional Bearer token for authentication
+ * @param secure use HTTPS instead of HTTP
  */
 class RemoteKDown(
-  private val baseUrl: String,
+  val host: String,
+  val port: Int = 8642,
   private val apiToken: String? = null,
+  val secure: Boolean = false,
 ) : KDownApi {
+
+  private val scheme = if (secure) "https" else "http"
+  private val baseUrl = "$scheme://$host:$port"
 
   private val scope = CoroutineScope(
     SupervisorJob() + Dispatchers.Default
@@ -91,10 +98,7 @@ class RemoteKDown(
   val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
   override val backendLabel: String =
-    "Remote · ${
-      baseUrl.removePrefix("http://")
-        .removePrefix("https://")
-    }"
+    "Remote · $host:$port"
 
   private val taskMap = mutableMapOf<String, RemoteDownloadTask>()
 
@@ -201,6 +205,9 @@ class RemoteKDown(
             }
           }
         }
+      } catch (_: UnauthorizedException) {
+        _connectionState.value = ConnectionState.Unauthorized
+        return
       } catch (_: Exception) {
         // Connection lost or failed
       }
@@ -216,6 +223,9 @@ class RemoteKDown(
 
   private suspend fun fetchAllTasks() {
     val response = httpClient.get(Api.Tasks())
+    if (response.status.value == 401) {
+      throw UnauthorizedException()
+    }
     if (response.status.isSuccess()) {
       val wireTasks: List<TaskResponse> =
         json.decodeFromString(response.bodyAsText())
@@ -304,6 +314,9 @@ class RemoteKDown(
       )
     }
   }
+
+  private class UnauthorizedException :
+    Exception("Server requires authentication")
 
   companion object {
     private const val INITIAL_RECONNECT_DELAY_MS = 1000L
