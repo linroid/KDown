@@ -78,7 +78,20 @@ internal class HttpDownloadSource(
     if (totalBytes < 0) throw KDownError.Unsupported
 
     val connections = effectiveConnections(context)
+
+    // Reuse existing segments with progress on retry (e.g., after
+    // HTTP 429) instead of recalculating from scratch.
+    val existing = context.segments.value
     val segments = if (
+      existing.isNotEmpty() &&
+      existing.any { it.downloadedBytes > 0 }
+    ) {
+      KDownLogger.i("HttpSource") {
+        "Reusing segments with existing progress, " +
+          "resegmenting to $connections connections"
+      }
+      SegmentCalculator.resegment(existing, connections)
+    } else if (
       resolved.supportsResume && connections > 1
     ) {
       KDownLogger.i("HttpSource") {
@@ -95,12 +108,14 @@ internal class HttpDownloadSource(
 
     context.segments.value = segments
 
-    try {
-      context.fileAccessor.preallocate(totalBytes)
-    } catch (e: Exception) {
-      if (e is CancellationException) throw e
-      if (e is KDownError) throw e
-      throw KDownError.Disk(e)
+    if (existing.isEmpty()) {
+      try {
+        context.fileAccessor.preallocate(totalBytes)
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        if (e is KDownError) throw e
+        throw KDownError.Disk(e)
+      }
     }
 
     downloadSegments(context, segments, totalBytes)
