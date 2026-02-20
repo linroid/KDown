@@ -1,9 +1,9 @@
 package com.linroid.kdown.server
 
-import com.linroid.kdown.core.DownloadConfig
-import com.linroid.kdown.core.QueueConfig
+import com.linroid.kdown.api.config.DownloadConfig
+import com.linroid.kdown.api.config.QueueConfig
 import com.linroid.kdown.endpoints.model.CreateDownloadRequest
-import com.linroid.kdown.endpoints.model.ServerStatus
+import com.linroid.kdown.api.ServerStatus
 import com.linroid.kdown.endpoints.model.SpeedLimitRequest
 import com.linroid.kdown.endpoints.model.TaskResponse
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation

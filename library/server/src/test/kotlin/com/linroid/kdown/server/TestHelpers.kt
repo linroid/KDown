@@ -2,7 +2,7 @@ package com.linroid.kdown.server
 
 import com.linroid.kdown.api.KDownApi
 import com.linroid.kdown.api.KDownError
-import com.linroid.kdown.core.DownloadConfig
+import com.linroid.kdown.api.config.DownloadConfig
 import com.linroid.kdown.core.KDown
 import com.linroid.kdown.core.engine.HttpEngine
 import com.linroid.kdown.core.engine.ServerInfo
