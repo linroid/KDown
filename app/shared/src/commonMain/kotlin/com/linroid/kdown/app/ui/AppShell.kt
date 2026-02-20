@@ -208,7 +208,7 @@ fun AppShell(instanceManager: InstanceManager) {
                 appState.statusFilter = selected
               },
               onAddClick = {
-                appState.showAddDialog = true
+                appState.requestAddDownload()
               }
             )
             VerticalDivider(
@@ -294,7 +294,7 @@ fun AppShell(instanceManager: InstanceManager) {
               selectedFilter = appState.statusFilter,
               scope = scope,
               onAddClick = {
-                appState.showAddDialog = true
+                appState.requestAddDownload()
               },
               modifier = Modifier.weight(1f),
             )
@@ -317,7 +317,7 @@ fun AppShell(instanceManager: InstanceManager) {
       // own "New Task" button on Expanded)
       if (!isExpanded) {
         FloatingActionButton(
-          onClick = { appState.showAddDialog = true },
+          onClick = { appState.requestAddDownload() },
           modifier = Modifier
             .align(Alignment.BottomEnd)
             .padding(end = 16.dp, bottom = 72.dp),
