@@ -1,5 +1,6 @@
 package com.linroid.kdown.server.api
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadPriority
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.api.FileSelectionMode
@@ -73,8 +74,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
     }
     val request = DownloadRequest(
       url = body.url,
-      directory = body.directory,
-      fileName = body.fileName,
+      destination = body.destination?.let { Destination(it) },
       connections = body.connections,
       headers = body.headers,
       priority = priority,
@@ -133,7 +133,7 @@ internal fun Route.downloadRoutes(kdown: KDownApi) {
       )
       return@post
     }
-    task.resume()
+    task.resume(resource.destination?.let { Destination(it) })
     call.respond(TaskMapper.toResponse(task))
   }
 

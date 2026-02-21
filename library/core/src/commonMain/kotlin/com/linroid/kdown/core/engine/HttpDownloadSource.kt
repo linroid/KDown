@@ -5,7 +5,6 @@ import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.core.file.DefaultFileNameResolver
-import com.linroid.kdown.core.file.FileNameResolver
 import com.linroid.kdown.core.log.KDownLogger
 import com.linroid.kdown.core.segment.SegmentCalculator
 import com.linroid.kdown.core.segment.SegmentDownloader
@@ -34,7 +33,6 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 internal class HttpDownloadSource(
   private val httpEngine: HttpEngine,
-  private val fileNameResolver: FileNameResolver,
   private val maxConnections: Int = 4,
   private val progressUpdateIntervalMs: Long = 200,
   private val segmentSaveIntervalMs: Long = 5000,
@@ -103,9 +101,7 @@ internal class HttpDownloadSource(
           "resegmenting to $connections connections"
       }
       SegmentCalculator.resegment(existing, connections)
-    } else if (
-      resolved.supportsResume && connections > 1
-    ) {
+    } else if (resolved.supportsResume && connections > 1) {
       KDownLogger.i("HttpSource") {
         "Server supports ranges. Using $connections " +
           "connections, totalBytes=$totalBytes"

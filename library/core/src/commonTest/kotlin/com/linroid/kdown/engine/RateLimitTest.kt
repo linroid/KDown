@@ -3,7 +3,6 @@ package com.linroid.kdown.engine
 import com.linroid.kdown.api.KDownError
 import com.linroid.kdown.core.engine.HttpDownloadSource
 import com.linroid.kdown.core.engine.ServerInfo
-import com.linroid.kdown.core.file.DefaultFileNameResolver
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -212,7 +211,6 @@ class RateLimitTest {
     )
     val source = HttpDownloadSource(
       httpEngine = engine,
-      fileNameResolver = DefaultFileNameResolver(),
       maxConnections = 4,
     )
     val resolved = source.resolve("https://example.com/file.zip")

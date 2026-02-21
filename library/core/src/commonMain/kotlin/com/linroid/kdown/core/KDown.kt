@@ -7,9 +7,9 @@ import com.linroid.kdown.api.DownloadState
 import com.linroid.kdown.api.DownloadTask
 import com.linroid.kdown.api.KDownApi
 import com.linroid.kdown.api.KDownError
+import com.linroid.kdown.api.KDownStatus
 import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
-import com.linroid.kdown.api.KDownStatus
 import com.linroid.kdown.api.config.DownloadConfig
 import com.linroid.kdown.core.engine.DelegatingSpeedLimiter
 import com.linroid.kdown.core.engine.DownloadCoordinator
@@ -22,7 +22,6 @@ import com.linroid.kdown.core.engine.SourceResolver
 import com.linroid.kdown.core.engine.SpeedLimiter
 import com.linroid.kdown.core.engine.TokenBucket
 import com.linroid.kdown.core.file.DefaultFileNameResolver
-import com.linroid.kdown.core.file.FileAccessor
 import com.linroid.kdown.core.file.FileNameResolver
 import com.linroid.kdown.core.log.KDownLogger
 import com.linroid.kdown.core.log.Logger
@@ -43,7 +42,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.io.files.Path
 import kotlin.time.Clock
 import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
@@ -55,7 +53,6 @@ import kotlin.uuid.Uuid
  * @param taskStore persistent storage for task records
  * @param config global download configuration
  * @param name user-visible instance name included in [status]
- * @param fileAccessorFactory factory for creating platform file writers
  * @param fileNameResolver strategy for resolving download file names
  * @param additionalSources extra [DownloadSource] implementations
  *   (e.g., torrent, media). HTTP is always included as a fallback.
@@ -66,11 +63,7 @@ class KDown(
   private val taskStore: TaskStore = InMemoryTaskStore(),
   private val config: DownloadConfig = DownloadConfig.Default,
   private val name: String = "KDown",
-  private val fileAccessorFactory: (Path) -> FileAccessor = { path ->
-    FileAccessor(path)
-  },
-  private val fileNameResolver: FileNameResolver =
-    DefaultFileNameResolver(),
+  private val fileNameResolver: FileNameResolver = DefaultFileNameResolver(),
   additionalSources: List<DownloadSource> = emptyList(),
   logger: Logger = Logger.None,
 ) : KDownApi {
@@ -88,7 +81,6 @@ class KDown(
 
   private val httpSource = HttpDownloadSource(
     httpEngine = httpEngine,
-    fileNameResolver = fileNameResolver,
     maxConnections = config.maxConnections,
     progressUpdateIntervalMs = config.progressUpdateIntervalMs,
     segmentSaveIntervalMs = config.segmentSaveIntervalMs,
@@ -124,7 +116,6 @@ class KDown(
     sourceResolver = sourceResolver,
     taskStore = taskStore,
     config = config,
-    fileAccessorFactory = fileAccessorFactory,
     fileNameResolver = fileNameResolver,
     globalLimiter = globalLimiter,
   )
@@ -191,17 +182,17 @@ class KDown(
         } else {
           KDownLogger.d("KDown") {
             "Ignoring pause for taskId=$taskId " +
-                "in state ${stateFlow.value}"
+              "in state ${stateFlow.value}"
           }
         }
       },
-      resumeAction = {
+      resumeAction = { dest ->
         val state = stateFlow.value
         if (state is DownloadState.Paused ||
           state is DownloadState.Failed
         ) {
           val resumed = coordinator.resume(
-            taskId, scope, stateFlow, segmentsFlow,
+            taskId, scope, stateFlow, segmentsFlow, dest,
           )
           if (!resumed) {
             coordinator.start(
@@ -244,13 +235,13 @@ class KDown(
         if (s.isTerminal) {
           KDownLogger.d("KDown") {
             "Ignoring reschedule for taskId=$taskId in " +
-                "terminal state $s"
+              "terminal state $s"
           }
           return@DownloadTaskImpl
         }
         KDownLogger.i("KDown") {
           "Rescheduling taskId=$taskId, schedule=$schedule, " +
-              "conditions=${conditions.size}"
+            "conditions=${conditions.size}"
         }
         scheduleManager.cancel(taskId)
         if (s.isActive) {
@@ -353,17 +344,17 @@ class KDown(
         } else {
           KDownLogger.d("KDown") {
             "Ignoring pause for taskId=${record.taskId} " +
-                "in state ${stateFlow.value}"
+              "in state ${stateFlow.value}"
           }
         }
       },
-      resumeAction = {
+      resumeAction = { dest ->
         val state = stateFlow.value
         if (state is DownloadState.Paused ||
           state is DownloadState.Failed
         ) {
           val resumed = coordinator.resume(
-            record.taskId, scope, stateFlow, segmentsFlow,
+            record.taskId, scope, stateFlow, segmentsFlow, dest,
           )
           if (!resumed) {
             coordinator.startFromRecord(
@@ -373,7 +364,7 @@ class KDown(
         } else {
           KDownLogger.d("KDown") {
             "Ignoring resume for taskId=${record.taskId} " +
-                "in state $state"
+              "in state $state"
           }
         }
       },
@@ -389,7 +380,7 @@ class KDown(
         } else {
           KDownLogger.d("KDown") {
             "Ignoring cancel for taskId=${record.taskId} " +
-                "in state $s"
+              "in state $s"
           }
         }
       },
@@ -408,14 +399,14 @@ class KDown(
         if (s.isTerminal) {
           KDownLogger.d("KDown") {
             "Ignoring reschedule for taskId=${record.taskId} in " +
-                "terminal state $s"
+              "terminal state $s"
           }
           return@DownloadTaskImpl
         }
         KDownLogger.i("KDown") {
           "Rescheduling taskId=${record.taskId}, " +
-              "schedule=$schedule, " +
-              "conditions=${conditions.size}"
+            "schedule=$schedule, " +
+            "conditions=${conditions.size}"
         }
         scheduleManager.cancel(record.taskId)
         if (s.isActive) {
@@ -445,7 +436,7 @@ class KDown(
       )
 
       TaskState.COMPLETED -> DownloadState.Completed(
-        record.destPath.toString(),
+        record.outputPath ?: "",
       )
 
       TaskState.FAILED -> DownloadState.Failed(

@@ -1,5 +1,6 @@
 package com.linroid.kdown.engine
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadPriority
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.api.DownloadState
@@ -34,7 +35,7 @@ class DownloadSchedulerTest {
     priority: DownloadPriority = DownloadPriority.NORMAL,
   ) = DownloadRequest(
     url = "https://example.com/file.zip",
-    directory = "/tmp",
+    destination = Destination("/tmp/"),
     priority = priority,
   )
 
@@ -46,13 +47,11 @@ class DownloadSchedulerTest {
     val engine = FakeHttpEngine()
     val source = HttpDownloadSource(
       httpEngine = engine,
-      fileNameResolver = DefaultFileNameResolver(),
     )
     val coordinator = DownloadCoordinator(
       sourceResolver = SourceResolver(listOf(source)),
       taskStore = InMemoryTaskStore(),
       config = DownloadConfig(),
-      fileAccessorFactory = { throw UnsupportedOperationException() },
       fileNameResolver = DefaultFileNameResolver(),
     )
     return DownloadScheduler(

@@ -30,7 +30,7 @@ val generateVersion by tasks.registering {
       |
       |internal const val KDOWN_BUILD_VERSION = "$ver"
       |internal const val KDOWN_BUILD_REVISION = "$revision"
-      |""".trimMargin()
+      |""".trimMargin(),
     )
   }
 }
@@ -63,6 +63,8 @@ kotlin {
     }
     commonTest.dependencies {
       implementation(libs.kotlin.test)
+    }
+    androidMain {
     }
   }
 }
