@@ -3,7 +3,16 @@
   android:height="24dp"
   android:viewportWidth="24"
   android:viewportHeight="24">
+  <!-- Main sail (taller, forward) -->
   <path
     android:fillColor="@android:color/white"
-    android:pathData="M19,9h-4V3H9v6H5l7,7 7,-7zM5,18v2h14v-2H5z" />
+    android:pathData="M7.5,2 L7.5,15.5 L14,15.5 Z" />
+  <!-- Mizzen sail (shorter, aft) -->
+  <path
+    android:fillColor="@android:color/white"
+    android:pathData="M14.9,6.5 L14.9,15.5 L19,15.5 Z" />
+  <!-- Hull -->
+  <path
+    android:fillColor="@android:color/white"
+    android:pathData="M4,16 Q12,21 20,16 Z" />
 </vector>
