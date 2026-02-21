@@ -1,5 +1,6 @@
 package com.linroid.ketch.app.android
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+@SuppressLint("InlinedApi")
 class KetchService : Service() {
 
   inner class LocalBinder : Binder() {
