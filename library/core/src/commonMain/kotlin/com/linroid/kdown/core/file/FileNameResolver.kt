@@ -1,15 +1,14 @@
 package com.linroid.kdown.core.file
 
 import com.linroid.kdown.api.DownloadRequest
-import com.linroid.kdown.api.Output
 import com.linroid.kdown.core.engine.ServerInfo
 
 /**
- * Resolves a file name for a download.
+ * Resolves a file name for a download from server metadata.
  *
- * Implement this interface to customize how file names are determined from
- * the download request and server response headers. Implementations should
- * check [Output.DirectoryAndFile.fileName] first and honour it when set.
+ * Explicit names set via [DownloadRequest.destination] are handled by
+ * the coordinator before this resolver is called. Implementations only
+ * need to derive a name from the server response.
  */
 fun interface FileNameResolver {
   /**

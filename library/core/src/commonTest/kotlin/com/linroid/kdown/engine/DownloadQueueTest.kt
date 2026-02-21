@@ -1,5 +1,6 @@
 package com.linroid.kdown.engine
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadPriority
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.api.DownloadState
@@ -40,7 +41,7 @@ class DownloadQueueTest {
     priority: DownloadPriority = DownloadPriority.NORMAL,
   ) = DownloadRequest(
     url = url,
-    directory = "/tmp",
+    destination = Destination("/tmp/"),
     priority = priority,
   )
 

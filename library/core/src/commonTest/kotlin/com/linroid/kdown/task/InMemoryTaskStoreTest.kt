@@ -1,5 +1,6 @@
 package com.linroid.kdown.task
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.core.task.InMemoryTaskStore
 import com.linroid.kdown.core.task.TaskRecord
@@ -20,11 +21,11 @@ class InMemoryTaskStoreTest {
     taskId = taskId,
     request = DownloadRequest(
       url = "https://example.com/file.bin",
-      directory = "/tmp",
+      destination = Destination("/tmp/"),
       connections = 4,
       headers = mapOf("Authorization" to "Bearer token"),
     ),
-    destPath = "/tmp/file.bin",
+    outputPath = "/tmp/file.bin",
     state = state,
     totalBytes = 1000,
     downloadedBytes = 0,

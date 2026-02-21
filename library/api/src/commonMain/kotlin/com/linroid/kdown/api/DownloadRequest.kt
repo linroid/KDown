@@ -1,7 +1,5 @@
 package com.linroid.kdown.api
 
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -9,7 +7,15 @@ import kotlinx.serialization.Transient
  * Describes a file to download.
  *
  * @property url the HTTP(S) URL to download from. Must not be blank.
- * @property output where the file should be saved. See [Output].
+ * @property destination where the file should be saved. Semantics depend
+ *   on the value:
+ *   - `null` — use the default directory, resolve file name from server
+ *   - `Destination("/downloads/")` — directory (trailing `/`), resolve
+ *     file name from server
+ *   - `Destination("custom.zip")` — bare name ([Destination.isName]),
+ *     use default directory
+ *   - `Destination("/downloads/custom.zip")` — full file path, use as-is
+ *   - `Destination("content://...")` — content URI, use as-is
  * @property connections number of concurrent connections (segments) to
  *   use. Must be non-negative. When `0` (the default), the engine uses
  *   [DownloadConfig.maxConnections][com.linroid.kdown.api.config.DownloadConfig.maxConnections].
@@ -41,7 +47,7 @@ import kotlinx.serialization.Transient
 @Serializable
 data class DownloadRequest(
   val url: String,
-  val output: Output = Output.DirectoryAndFile(),
+  val destination: Destination? = null,
   val connections: Int = 0,
   val headers: Map<String, String> = emptyMap(),
   val properties: Map<String, String> = emptyMap(),
@@ -54,110 +60,8 @@ data class DownloadRequest(
   @Transient
   val resolvedUrl: ResolvedSource? = null,
 ) {
-  constructor(
-    url: String,
-    directory: String? = null,
-    fileName: String? = null,
-    connections: Int = 1,
-    headers: Map<String, String> = emptyMap(),
-    properties: Map<String, String> = emptyMap(),
-    speedLimit: SpeedLimit = SpeedLimit.Unlimited,
-    priority: DownloadPriority = DownloadPriority.NORMAL,
-    schedule: DownloadSchedule = DownloadSchedule.Immediate,
-    selectedFileIds: Set<String> = emptySet(),
-    conditions: List<DownloadCondition> = emptyList(),
-    resolvedUrl: ResolvedSource? = null,
-  ) : this(
-    url = url,
-    output = Output.DirectoryAndFile(directory, fileName),
-    connections = connections,
-    headers = headers,
-    properties = properties,
-    speedLimit = speedLimit,
-    priority = priority,
-    schedule = schedule,
-    selectedFileIds = selectedFileIds,
-    conditions = conditions,
-    resolvedUrl = resolvedUrl,
-  )
-
   init {
     require(url.isNotBlank()) { "URL must not be blank" }
     require(connections >= 0) { "Connections must be non-negative" }
-  }
-}
-
-@Serializable
-sealed interface Output {
-  fun toDestPath(defaultDirectory: String, defaultFileName: String?, deduplicate: Boolean): String
-
-  /**
-   * @property directory the local directory where the file will be saved.
-   *   When `null`, the implementation chooses a default location.
-   * @property fileName explicit file name to save as. When `null`, the
-   *   file name is determined from the server response
-   *   (Content-Disposition header, URL path, or a fallback).
-   */
-  @Serializable
-  data class DirectoryAndFile(val directory: String? = null, val fileName: String? = null) : Output {
-    override fun toDestPath(defaultDirectory: String, defaultFileName: String?, deduplicate: Boolean): String {
-      val directory = directory?.let { Path(it) }
-        ?: Path(defaultDirectory)
-      val initialDestPath = (fileName ?: defaultFileName)?.let {
-        Path(directory, it).let { p ->
-          if (deduplicate) {
-            deduplicatePath(p)
-          } else {
-            p
-          }
-        }
-      } ?: directory
-
-      return initialDestPath.toString()
-    }
-
-    companion object {
-      internal fun deduplicatePath(
-        candidate: Path,
-      ): Path {
-        val fileName = candidate.name
-        val directory = candidate.parent ?: return candidate
-        if (!SystemFileSystem.exists(candidate)) return candidate
-
-        val dotIndex = fileName.lastIndexOf('.')
-        val baseName: String
-        val extension: String
-        if (dotIndex > 0) {
-          baseName = fileName.take(dotIndex)
-          extension = fileName.substring(dotIndex)
-        } else {
-          baseName = fileName
-          extension = ""
-        }
-
-        var seq = 1
-        while (true) {
-          val path = Path(directory, "$baseName ($seq)$extension")
-          if (!SystemFileSystem.exists(path)) return path
-          seq++
-        }
-      }
-    }
-  }
-
-  /**
-   * @param path the full path to the destination file. On Android, this can also be
-   *    a content Uri pointing to a file.
-   * @param displayName an optional display name for the file. You can use this to help
-   *    track the name of a file in your UI.
-   *
-   * Note that this method doesn't support deduplicating when starting a new download and
-   *   will overwrite existing files.
-   */
-  @Serializable
-  data class PathOrUri(val path: String, val displayName: String? = null) : Output {
-    override fun toDestPath(defaultDirectory: String, defaultFileName: String?, deduplicate: Boolean): String {
-      return path
-    }
   }
 }

@@ -1,5 +1,6 @@
 package com.linroid.kdown.engine
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadCondition
 import com.linroid.kdown.api.DownloadPriority
 import com.linroid.kdown.api.DownloadRequest
@@ -42,7 +43,7 @@ class ScheduleManagerTest {
     conditions: List<DownloadCondition> = emptyList(),
   ) = DownloadRequest(
     url = "https://example.com/file.zip",
-    directory = "/tmp",
+    destination = Destination("/tmp/"),
     schedule = schedule,
     conditions = conditions,
     priority = DownloadPriority.NORMAL,

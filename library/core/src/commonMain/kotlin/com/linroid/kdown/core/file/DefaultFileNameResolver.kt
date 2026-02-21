@@ -1,7 +1,6 @@
 package com.linroid.kdown.core.file
 
 import com.linroid.kdown.api.DownloadRequest
-import com.linroid.kdown.api.Output
 import com.linroid.kdown.core.engine.ServerInfo
 
 /**
@@ -10,6 +9,9 @@ import com.linroid.kdown.core.engine.ServerInfo
  *    or `filename=...`)
  * 2. Last non-empty URL path segment (percent-decoded, query/fragment stripped)
  * 3. Fallback: `"download"`
+ *
+ * Explicit names set via [DownloadRequest.destination] are handled by
+ * the coordinator before this resolver is called.
  */
 internal class DefaultFileNameResolver : FileNameResolver {
 
@@ -17,8 +19,7 @@ internal class DefaultFileNameResolver : FileNameResolver {
     request: DownloadRequest,
     serverInfo: ServerInfo,
   ): String {
-    return (request.output as? Output.DirectoryAndFile)?.fileName
-      ?: fromContentDisposition(serverInfo.contentDisposition)
+    return fromContentDisposition(serverInfo.contentDisposition)
       ?: fromUrl(request.url)
       ?: FALLBACK
   }

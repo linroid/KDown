@@ -211,7 +211,6 @@ class ResolveUrlTest {
     )
     val source = HttpDownloadSource(
       httpEngine = engine,
-      fileNameResolver = DefaultFileNameResolver(),
     )
     val resolved = source.resolve("https://example.com/file.zip")
     assertEquals("10", resolved.metadata["rateLimitRemaining"])
@@ -232,7 +231,6 @@ class ResolveUrlTest {
     )
     val source = HttpDownloadSource(
       httpEngine = engine,
-      fileNameResolver = DefaultFileNameResolver(),
     )
     val resolved = source.resolve("https://example.com/file.zip")
     assertEquals("0", resolved.metadata["rateLimitRemaining"])
@@ -251,7 +249,6 @@ class ResolveUrlTest {
     )
     val source = HttpDownloadSource(
       httpEngine = engine,
-      fileNameResolver = DefaultFileNameResolver(),
     )
     val resolved = source.resolve("https://example.com/file.zip")
     assertFalse(resolved.metadata.containsKey("rateLimitRemaining"))

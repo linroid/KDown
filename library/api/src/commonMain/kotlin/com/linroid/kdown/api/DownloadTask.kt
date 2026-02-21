@@ -26,12 +26,12 @@ interface DownloadTask {
   /**
    * Resumes a paused or failed download from where it left off.
    *
-   * @param destPathOverride optionally update the destination task's path.
-   *   This can be useful if the destination is obtained through Android's
-   *   document provider framework, since the returned Uri can change
-   *   even when it's pointing to the same file.
+   * @param destination optionally override the download destination.
+   *   This can be useful if the destination is obtained through
+   *   Android's document provider framework, since the returned URI
+   *   can change even when it points to the same file.
    */
-  suspend fun resume(destPathOverride: String? = null)
+  suspend fun resume(destination: Destination? = null)
 
   /** Cancels the download. This is a terminal action. */
   suspend fun cancel()
@@ -90,7 +90,7 @@ interface DownloadTask {
   suspend fun await(): Result<String> {
     val finalState = state.first { it.isTerminal }
     return when (finalState) {
-      is DownloadState.Completed -> Result.success(finalState.filePath)
+      is DownloadState.Completed -> Result.success(finalState.outputPath)
       is DownloadState.Failed -> Result.failure(finalState.error)
       is DownloadState.Canceled -> Result.failure(KDownError.Canceled)
       else -> Result.failure(KDownError.Unknown(null))

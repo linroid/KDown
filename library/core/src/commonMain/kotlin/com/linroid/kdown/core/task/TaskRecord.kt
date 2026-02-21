@@ -11,13 +11,13 @@ import kotlin.time.Instant
  * to restore a download after a process restart, including server info
  * fields used for resume validation and segment-level progress.
  *
- * This is the data model used by [com.linroid.kdown.core.task.TaskStore].
+ * This is the data model used by [TaskStore].
  */
 @Serializable
 data class TaskRecord(
   val taskId: String,
   val request: DownloadRequest,
-  val destPath: String,
+  val outputPath: String,
   val state: TaskState = TaskState.PENDING,
   val totalBytes: Long = -1,
   val downloadedBytes: Long = 0,

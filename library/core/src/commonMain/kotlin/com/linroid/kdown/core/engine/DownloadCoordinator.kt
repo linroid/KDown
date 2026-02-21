@@ -1,5 +1,6 @@
 package com.linroid.kdown.core.engine
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadProgress
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.api.DownloadState
@@ -8,6 +9,9 @@ import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
 import com.linroid.kdown.api.SpeedLimit
 import com.linroid.kdown.api.config.DownloadConfig
+import com.linroid.kdown.api.isDirectory
+import com.linroid.kdown.api.isFile
+import com.linroid.kdown.api.isName
 import com.linroid.kdown.core.file.FileAccessor
 import com.linroid.kdown.core.file.FileNameResolver
 import com.linroid.kdown.core.log.KDownLogger
@@ -58,9 +62,10 @@ internal class DownloadCoordinator(
     stateFlow: MutableStateFlow<DownloadState>,
     segmentsFlow: MutableStateFlow<List<Segment>>,
   ) {
-    val initialDestPath = request.output.toDestPath(
-      defaultDirectory = config.defaultDirectory,
-      defaultFileName = null,
+    val initialDestPath = resolveDestPath(
+      destination = request.destination,
+      defaultDir = config.defaultDirectory,
+      serverFileName = null,
       deduplicate = false,
     )
 
@@ -69,7 +74,7 @@ internal class DownloadCoordinator(
       TaskRecord(
         taskId = taskId,
         request = request,
-        destPath = initialDestPath,
+        outputPath = initialDestPath,
         state = TaskState.PENDING,
         createdAt = now,
         updatedAt = now,
@@ -206,16 +211,17 @@ internal class DownloadCoordinator(
       ?: fileNameResolver.resolve(
         request, toServerInfo(resolvedUrl),
       )
-    val destPath = request.output.toDestPath(
-      defaultDirectory = config.defaultDirectory,
-      defaultFileName = fileName,
+    val outputPath = resolveDestPath(
+      destination = request.destination,
+      defaultDir = config.defaultDirectory,
+      serverFileName = fileName,
       deduplicate = true,
     )
 
     val now = Clock.System.now()
     updateTaskRecord(taskId) {
       it.copy(
-        destPath = destPath,
+        outputPath = outputPath,
         state = TaskState.DOWNLOADING,
         totalBytes = totalBytes,
         acceptRanges = resolvedUrl.supportsResume,
@@ -228,7 +234,7 @@ internal class DownloadCoordinator(
       )
     }
 
-    val fileAccessor = fileAccessorFactory(destPath)
+    val fileAccessor = fileAccessorFactory(outputPath)
 
     val taskLimiter = mutex.withLock {
       activeDownloads[taskId]?.let {
@@ -280,7 +286,7 @@ internal class DownloadCoordinator(
         "Download completed successfully for taskId=$taskId"
       }
       stateFlow.value =
-        DownloadState.Completed(destPath)
+        DownloadState.Completed(outputPath)
     } finally {
       fileAccessor.close()
       withContext(NonCancellable) {
@@ -351,7 +357,7 @@ internal class DownloadCoordinator(
     scope: CoroutineScope,
     stateFlow: MutableStateFlow<DownloadState>,
     segmentsFlow: MutableStateFlow<List<Segment>>,
-    destPathOverride: String? = null,
+    destination: Destination? = null,
   ): Boolean {
     mutex.withLock {
       if (activeDownloads.containsKey(taskId)) {
@@ -373,7 +379,7 @@ internal class DownloadCoordinator(
       it.copy(
         state = TaskState.DOWNLOADING,
         updatedAt = Clock.System.now(),
-        destPath = destPathOverride ?: it.destPath,
+        outputPath = destination?.value ?: it.outputPath,
       )
     }
 
@@ -428,7 +434,7 @@ internal class DownloadCoordinator(
         "source '${source.type}'"
     }
 
-    val fileAccessor = fileAccessorFactory(taskRecord.destPath)
+    val fileAccessor = fileAccessorFactory(taskRecord.outputPath)
 
     val taskLimiter = mutex.withLock {
       activeDownloads[taskId]?.let {
@@ -482,7 +488,7 @@ internal class DownloadCoordinator(
       }
 
       stateFlow.value =
-        DownloadState.Completed(taskRecord.destPath)
+        DownloadState.Completed(taskRecord.outputPath)
     } finally {
       fileAccessor.close()
       withContext(NonCancellable) {
@@ -757,5 +763,59 @@ internal class DownloadCoordinator(
         HttpDownloadSource.META_LAST_MODIFIED
       ],
     )
+  }
+
+  private fun resolveDestPath(
+    destination: Destination?,
+    defaultDir: String,
+    serverFileName: String?,
+    deduplicate: Boolean,
+  ): String {
+    if (destination != null && destination.isFile()) {
+      return destination.value
+    }
+    val directory = when {
+      destination != null && destination.isDirectory() ->
+        destination.value.trimEnd('/', '\\')
+      else -> defaultDir
+    }
+    val fileName = when {
+      destination != null && destination.isName() ->
+        destination.value
+      else -> serverFileName
+    }
+    if (fileName == null) return directory
+    val combined = Path(directory, fileName)
+    return if (deduplicate) {
+      deduplicatePath(combined).toString()
+    } else {
+      combined.toString()
+    }
+  }
+
+  companion object {
+    internal fun deduplicatePath(candidate: Path): Path {
+      val fileName = candidate.name
+      val directory = candidate.parent ?: return candidate
+      if (!SystemFileSystem.exists(candidate)) return candidate
+
+      val dotIndex = fileName.lastIndexOf('.')
+      val baseName: String
+      val extension: String
+      if (dotIndex > 0) {
+        baseName = fileName.take(dotIndex)
+        extension = fileName.substring(dotIndex)
+      } else {
+        baseName = fileName
+        extension = ""
+      }
+
+      var seq = 1
+      while (true) {
+        val path = Path(directory, "$baseName ($seq)$extension")
+        if (!SystemFileSystem.exists(path)) return path
+        seq++
+      }
+    }
   }
 }

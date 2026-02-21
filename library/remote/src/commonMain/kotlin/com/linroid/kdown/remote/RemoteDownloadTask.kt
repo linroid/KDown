@@ -1,5 +1,6 @@
 package com.linroid.kdown.remote
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadCondition
 import com.linroid.kdown.api.DownloadPriority
 import com.linroid.kdown.api.DownloadRequest
@@ -64,11 +65,11 @@ internal class RemoteDownloadTask(
     applyWireResponse(response.bodyAsText())
   }
 
-  override suspend fun resume(destPathOverride: String?) {
+  override suspend fun resume(destination: Destination?) {
     val response = httpClient.post(
       Api.Tasks.ById.Resume(
         parent = byId,
-        destPathOverride = destPathOverride,
+        destination = destination?.value,
       ),
     )
     checkSuccess(response)

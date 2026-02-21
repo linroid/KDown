@@ -1,12 +1,12 @@
 package com.linroid.kdown.remote
 
+import com.linroid.kdown.api.Destination
 import com.linroid.kdown.api.DownloadPriority
 import com.linroid.kdown.api.DownloadProgress
 import com.linroid.kdown.api.DownloadRequest
 import com.linroid.kdown.api.DownloadState
 import com.linroid.kdown.api.FileSelectionMode
 import com.linroid.kdown.api.KDownError
-import com.linroid.kdown.api.Output
 import com.linroid.kdown.api.ResolvedSource
 import com.linroid.kdown.api.Segment
 import com.linroid.kdown.api.SourceFile
@@ -22,21 +22,9 @@ import kotlin.time.Instant
 internal object WireMapper {
 
   fun toDownloadRequest(wire: TaskResponse): DownloadRequest {
-    val output = when {
-        wire.directory != null -> {
-            Output.DirectoryAndFile(wire.directory, wire.fileName)
-        }
-        wire.pathOrUri != null -> {
-            Output.PathOrUri(wire.pathOrUri!!)
-        }
-        else -> {
-            throw IllegalStateException("Either directory or pathOrUri must be specified!")
-        }
-    }
-
     return DownloadRequest(
       url = wire.url,
-      output = output,
+      destination = wire.destination?.let { Destination(it) },
       connections = wire.connections,
       speedLimit = if (wire.speedLimitBytesPerSecond > 0) {
         SpeedLimit.of(wire.speedLimitBytesPerSecond)
@@ -50,13 +38,9 @@ internal object WireMapper {
   fun toCreateWire(
     request: DownloadRequest,
   ): CreateDownloadRequest {
-    val output = request.output
-
     return CreateDownloadRequest(
       url = request.url,
-      directory = if (output is Output.DirectoryAndFile) output.directory ?: "" else null,
-      fileName = if (output is Output.DirectoryAndFile) output.fileName else null,
-      pathOrUri = if (output is Output.PathOrUri) output.path else null,
+      destination = request.destination?.value,
       connections = request.connections,
       headers = request.headers,
       priority = request.priority.name,
@@ -74,7 +58,7 @@ internal object WireMapper {
       wire.state,
       wire.progress,
       wire.error,
-      wire.filePath
+      wire.outputPath
     )
   }
 
@@ -82,7 +66,7 @@ internal object WireMapper {
     state: String,
     progress: ProgressResponse?,
     error: String?,
-    filePath: String?,
+    outputPath: String?,
   ): DownloadState {
     return when (state) {
       "idle" -> DownloadState.Idle
@@ -98,7 +82,7 @@ internal object WireMapper {
           ?: DownloadProgress(0, 0)
       )
       "completed" -> DownloadState.Completed(
-        filePath ?: ""
+        outputPath ?: ""
       )
       "failed" -> DownloadState.Failed(
         KDownError.Unknown(cause = Exception(error ?: "Unknown")),

@@ -30,7 +30,7 @@ val generateVersion by tasks.registering {
       |
       |internal const val KDOWN_BUILD_VERSION = "$ver"
       |internal const val KDOWN_BUILD_REVISION = "$revision"
-      |""".trimMargin()
+      |""".trimMargin(),
     )
   }
 }
@@ -59,11 +59,15 @@ kotlin {
         implementation(libs.kotlinx.coroutines.core)
         implementation(libs.kotlinx.serialization.json)
         implementation(libs.kotlinx.datetime)
-        implementation(libs.kotlinx.io.core)
       }
     }
     commonTest.dependencies {
       implementation(libs.kotlin.test)
+    }
+    androidMain {
+      dependencies {
+        implementation(libs.androidx.core.ktx)
+      }
     }
   }
 }

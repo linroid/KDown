@@ -193,13 +193,13 @@ class KDown(
           }
         }
       },
-      resumeAction = {
+      resumeAction = { dest ->
         val state = stateFlow.value
         if (state is DownloadState.Paused ||
           state is DownloadState.Failed
         ) {
           val resumed = coordinator.resume(
-            taskId, scope, stateFlow, segmentsFlow, it,
+            taskId, scope, stateFlow, segmentsFlow, dest,
           )
           if (!resumed) {
             coordinator.start(
@@ -355,13 +355,13 @@ class KDown(
           }
         }
       },
-      resumeAction = {
+      resumeAction = { dest ->
         val state = stateFlow.value
         if (state is DownloadState.Paused ||
           state is DownloadState.Failed
         ) {
           val resumed = coordinator.resume(
-            record.taskId, scope, stateFlow, segmentsFlow, it,
+            record.taskId, scope, stateFlow, segmentsFlow, dest,
           )
           if (!resumed) {
             coordinator.startFromRecord(
@@ -443,7 +443,7 @@ class KDown(
       )
 
       TaskState.COMPLETED -> DownloadState.Completed(
-        record.destPath,
+        record.outputPath,
       )
 
       TaskState.FAILED -> DownloadState.Failed(
