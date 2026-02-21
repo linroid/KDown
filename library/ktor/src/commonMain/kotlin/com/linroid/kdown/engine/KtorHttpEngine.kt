@@ -10,6 +10,7 @@ import io.ktor.client.request.head
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
@@ -37,17 +38,30 @@ class KtorHttpEngine(
         customHeaders.forEach { (name, value) -> header(name, value) }
       }
 
+      KDownLogger.d("KtorHttpEngine") {
+        "HEAD ${response.status.value} headers: " +
+          response.headers.entries().joinToString { (k, v) ->
+            "$k=${v.joinToString(",")}"
+          }
+      }
+
       if (!response.status.isSuccess()) {
         KDownLogger.e("KtorHttpEngine") {
           "HTTP error ${response.status.value}: ${response.status.description}"
         }
-        val retryAfter = if (response.status.value == 429) {
+        val is429 = response.status.value == 429
+        val retryAfter = if (is429) {
           parseRetryAfter(response.headers["Retry-After"])
+            ?: findRateLimitReset(response.headers)
+        } else null
+        val remaining = if (is429) {
+          findRateLimitRemaining(response.headers)
         } else null
         throw KDownError.Http(
           response.status.value,
           response.status.description,
           retryAfter,
+          remaining,
         )
       }
 
@@ -57,6 +71,10 @@ class KtorHttpEngine(
       val contentLength = response.contentLength()
       val contentDisposition =
         response.headers[HttpHeaders.ContentDisposition]
+      val rateLimitRemaining =
+        findRateLimitRemaining(response.headers)
+      val rateLimitReset =
+        findRateLimitReset(response.headers)
 
       return ServerInfo(
         contentLength = contentLength,
@@ -64,6 +82,8 @@ class KtorHttpEngine(
         etag = etag,
         lastModified = lastModified,
         contentDisposition = contentDisposition,
+        rateLimitRemaining = rateLimitRemaining,
+        rateLimitReset = rateLimitReset,
       )
     } catch (e: CancellationException) {
       throw e
@@ -95,15 +115,28 @@ class KtorHttpEngine(
         }
       }.execute { response ->
         val status = response.status
+
+        KDownLogger.d("KtorHttpEngine") {
+          "GET ${status.value} headers: " +
+            response.headers.entries().joinToString { (k, v) ->
+              "$k=${v.joinToString(",")}"
+            }
+        }
+
         if (!status.isSuccess()) {
           KDownLogger.e("KtorHttpEngine") {
             "HTTP error ${status.value}: ${status.description}"
           }
-          val retryAfter = if (status.value == 429) {
+          val is429 = status.value == 429
+          val retryAfter = if (is429) {
             parseRetryAfter(response.headers["Retry-After"])
+              ?: findRateLimitReset(response.headers)
+          } else null
+          val remaining = if (is429) {
+            findRateLimitRemaining(response.headers)
           } else null
           throw KDownError.Http(
-            status.value, status.description, retryAfter,
+            status.value, status.description, retryAfter, remaining,
           )
         }
 
@@ -149,6 +182,75 @@ class KtorHttpEngine(
      */
     private fun parseRetryAfter(value: String?): Long? {
       return value?.trim()?.toLongOrNull()?.takeIf { it > 0 }
+    }
+
+    /**
+     * Parses a rate limit header value as a non-negative long.
+     * Accepts `0` (unlike [parseRetryAfter] which requires > 0).
+     */
+    private fun parseRateLimitLong(value: String?): Long? {
+      return value?.trim()?.toLongOrNull()?.takeIf { it >= 0 }
+    }
+
+    // Header name variants for RateLimit-Remaining:
+    //   draft-polli-02:  RateLimit-Remaining
+    //   non-standard:    X-RateLimit-Remaining, X-Rate-Limit-Remaining
+    //   draft-ietf-10:   RateLimit (combined, ;r= parameter)
+    private val REMAINING_HEADERS = listOf(
+      "RateLimit-Remaining",
+      "X-RateLimit-Remaining",
+      "X-Rate-Limit-Remaining",
+    )
+
+    // Header name variants for RateLimit-Reset:
+    //   draft-polli-02:  RateLimit-Reset
+    //   non-standard:    X-RateLimit-Reset, X-Rate-Limit-Reset
+    //   draft-ietf-10:   RateLimit (combined, ;t= parameter)
+    private val RESET_HEADERS = listOf(
+      "RateLimit-Reset",
+      "X-RateLimit-Reset",
+      "X-Rate-Limit-Reset",
+    )
+
+    /**
+     * Finds `remaining` from any known rate limit header variant.
+     * Checks separate headers first, then the combined `RateLimit`
+     * structured header (`;r=` parameter).
+     */
+    private fun findRateLimitRemaining(headers: Headers): Long? {
+      for (name in REMAINING_HEADERS) {
+        parseRateLimitLong(headers[name])?.let { return it }
+      }
+      return parseStructuredParam(headers["RateLimit"], 'r')
+    }
+
+    /**
+     * Finds `reset` (seconds) from any known rate limit header variant.
+     * Checks separate headers first, then the combined `RateLimit`
+     * structured header (`;t=` parameter).
+     */
+    private fun findRateLimitReset(headers: Headers): Long? {
+      for (name in RESET_HEADERS) {
+        parseRateLimitLong(headers[name])?.let { return it }
+      }
+      return parseStructuredParam(headers["RateLimit"], 't')
+    }
+
+    /**
+     * Extracts a numeric parameter from a
+     * [structured field](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers)
+     * value like `"default";r=50;t=30`.
+     */
+    private fun parseStructuredParam(
+      value: String?,
+      param: Char,
+    ): Long? {
+      if (value == null) return null
+      val pattern = Regex(""";$param=(\d+)""")
+      return pattern.find(value)
+        ?.groupValues?.get(1)
+        ?.toLongOrNull()
+        ?.takeIf { it >= 0 }
     }
   }
 }

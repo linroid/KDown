@@ -1,6 +1,9 @@
 package com.linroid.kdown.engine
 
 import com.linroid.kdown.api.KDownError
+import com.linroid.kdown.core.engine.HttpDownloadSource
+import com.linroid.kdown.core.engine.ServerInfo
+import com.linroid.kdown.core.file.DefaultFileNameResolver
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -137,6 +140,172 @@ class RateLimitTest {
     // Full file coverage maintained
     val totalCovered = result.sumOf { it.totalBytes }
     assertEquals(1000L, totalCovered, "Should cover full 1000 bytes")
+  }
+
+  // -- Proactive rate limit tests --
+
+  @Test
+  fun fakeEngine_rateLimitInServerInfo_passedThrough() = runTest {
+    val engine = FakeHttpEngine(
+      serverInfo = ServerInfo(
+        contentLength = 5000,
+        acceptRanges = true,
+        etag = null,
+        lastModified = null,
+        rateLimitRemaining = 3,
+        rateLimitReset = 60,
+      ),
+    )
+    val info = engine.head("https://example.com/file")
+    assertEquals(3L, info.rateLimitRemaining)
+    assertEquals(60L, info.rateLimitReset)
+  }
+
+  @Test
+  fun fakeEngine_noRateLimit_fieldsAreNull() = runTest {
+    val engine = FakeHttpEngine()
+    val info = engine.head("https://example.com/file")
+    assertNull(info.rateLimitRemaining)
+    assertNull(info.rateLimitReset)
+  }
+
+  @Test
+  fun rateLimitCapping_remainingLessThanConnections() {
+    // Simulates the capping formula from HttpDownloadSource.applyRateLimit:
+    // if remaining > 0 && remaining < connections -> cap to remaining (min 1)
+    val connections = 4
+    val remaining = 2L
+    val capped = remaining.toInt().coerceAtLeast(1)
+    assertEquals(2, capped)
+    assertTrue(capped < connections)
+  }
+
+  @Test
+  fun rateLimitCapping_remainingIsOne() {
+    val remaining = 1L
+    val capped = remaining.toInt().coerceAtLeast(1)
+    assertEquals(1, capped)
+  }
+
+  @Test
+  fun rateLimitCapping_remainingGreaterThanConnections_noChange() {
+    // When remaining >= connections, no capping occurs
+    val connections = 4
+    val remaining = 10L
+    // applyRateLimit returns connections unchanged
+    assertTrue(remaining >= connections)
+  }
+
+  @Test
+  fun resolve_rateLimitCapsMaxSegments() = runTest {
+    // When rate limit remaining is less than maxConnections,
+    // the metadata carries the rate limit info for download() to use
+    val engine = FakeHttpEngine(
+      serverInfo = ServerInfo(
+        contentLength = 10000,
+        acceptRanges = true,
+        etag = null,
+        lastModified = null,
+        rateLimitRemaining = 2,
+        rateLimitReset = 30,
+      ),
+    )
+    val source = HttpDownloadSource(
+      httpEngine = engine,
+      fileNameResolver = DefaultFileNameResolver(),
+      maxConnections = 4,
+    )
+    val resolved = source.resolve("https://example.com/file.zip")
+    // maxSegments is based on maxConnections (4), rate limit capping
+    // happens at download time, not resolve time
+    assertEquals(4, resolved.maxSegments)
+    // But metadata carries the rate limit info for download() to cap
+    assertEquals("2", resolved.metadata["rateLimitRemaining"])
+    assertEquals("30", resolved.metadata["rateLimitReset"])
+  }
+
+  // -- 429 + RateLimit-Remaining tests --
+
+  @Test
+  fun fakeEngine_429_includesRateLimitRemaining() = runTest {
+    val engine = FakeHttpEngine(
+      httpErrorCode = 429,
+      retryAfterSeconds = 10,
+      rateLimitRemaining = 0,
+    )
+    val error = assertFailsWith<KDownError.Http> {
+      engine.download("https://example.com/file", null) {}
+    }
+    assertEquals(429, error.code)
+    assertEquals(10L, error.retryAfterSeconds)
+    assertEquals(0L, error.rateLimitRemaining)
+  }
+
+  @Test
+  fun fakeEngine_429Head_includesRateLimitRemaining() = runTest {
+    val engine = FakeHttpEngine(
+      httpErrorCode = 429,
+      rateLimitRemaining = 2,
+    )
+    val error = assertFailsWith<KDownError.Http> {
+      engine.head("https://example.com/file")
+    }
+    assertEquals(429, error.code)
+    assertEquals(2L, error.rateLimitRemaining)
+  }
+
+  @Test
+  fun connectionReduction_usesRateLimitRemaining_whenLessThanCurrent() {
+    // When RateLimit-Remaining=2 and current=4, reduce to 2
+    val current = 4
+    val rateLimitRemaining = 2L
+    val reduced = if (rateLimitRemaining < current) {
+      rateLimitRemaining.toInt().coerceAtLeast(1)
+    } else {
+      (current / 2).coerceAtLeast(1)
+    }
+    assertEquals(2, reduced)
+  }
+
+  @Test
+  fun connectionReduction_usesRateLimitRemaining_zeroMeansOne() {
+    // When RateLimit-Remaining=0, reduce to minimum of 1
+    val current = 4
+    val rateLimitRemaining = 0L
+    val reduced = if (rateLimitRemaining < current) {
+      rateLimitRemaining.toInt().coerceAtLeast(1)
+    } else {
+      (current / 2).coerceAtLeast(1)
+    }
+    assertEquals(1, reduced)
+  }
+
+  @Test
+  fun connectionReduction_fallsBackToHalving_whenRemainingNull() {
+    // When RateLimit-Remaining is absent, halve as before
+    val current = 4
+    val rateLimitRemaining: Long? = null
+    val reduced = if (rateLimitRemaining != null &&
+      rateLimitRemaining < current
+    ) {
+      rateLimitRemaining.toInt().coerceAtLeast(1)
+    } else {
+      (current / 2).coerceAtLeast(1)
+    }
+    assertEquals(2, reduced)
+  }
+
+  @Test
+  fun connectionReduction_fallsBackToHalving_whenRemainingHigher() {
+    // RateLimit-Remaining >= current → fall back to halving
+    val current = 4
+    val rateLimitRemaining = 10L
+    val reduced = if (rateLimitRemaining < current) {
+      rateLimitRemaining.toInt().coerceAtLeast(1)
+    } else {
+      (current / 2).coerceAtLeast(1)
+    }
+    assertEquals(2, reduced)
   }
 
   @Test

@@ -67,6 +67,12 @@ internal class HttpDownloadSource(
         serverInfo.etag?.let { put(META_ETAG, it) }
         serverInfo.lastModified?.let { put(META_LAST_MODIFIED, it) }
         if (serverInfo.acceptRanges) put(META_ACCEPT_RANGES, "true")
+        serverInfo.rateLimitRemaining?.let {
+          put(META_RATE_LIMIT_REMAINING, it.toString())
+        }
+        serverInfo.rateLimitReset?.let {
+          put(META_RATE_LIMIT_RESET, it.toString())
+        }
       },
     )
   }
@@ -77,7 +83,13 @@ internal class HttpDownloadSource(
     val totalBytes = resolved.totalBytes
     if (totalBytes < 0) throw KDownError.Unsupported
 
-    val connections = effectiveConnections(context)
+    val remaining = resolved.metadata[META_RATE_LIMIT_REMAINING]
+      ?.toLongOrNull()
+    val reset = resolved.metadata[META_RATE_LIMIT_RESET]
+      ?.toLongOrNull()
+    val connections = applyRateLimit(
+      effectiveConnections(context), remaining, reset,
+    )
 
     // Reuse existing segments with progress on retry (e.g., after
     // HTTP 429) instead of recalculating from scratch.
@@ -157,7 +169,11 @@ internal class HttpDownloadSource(
     var segments = context.segments.value
     val totalBytes = state.totalBytes
 
-    val connections = effectiveConnections(context)
+    val connections = applyRateLimit(
+      effectiveConnections(context),
+      serverInfo.rateLimitRemaining,
+      serverInfo.rateLimitReset,
+    )
     val incompleteCount = segments.count { !it.isComplete }
     if (incompleteCount > 0 && connections != incompleteCount) {
       KDownLogger.i("HttpSource") {
@@ -419,6 +435,43 @@ internal class HttpDownloadSource(
     }
   }
 
+  /**
+   * Applies proactive rate limit capping based on server-reported
+   * `RateLimit-Remaining` and `RateLimit-Reset` headers.
+   *
+   * - If `remaining > 0` and less than [connections], caps to
+   *   `remaining` (minimum 1).
+   * - If `remaining == 0` and `reset > 0`, delays until the rate
+   *   limit window resets, then returns [connections] unchanged.
+   * - If `remaining == 0` and reset is unknown, delays 1 second
+   *   as a conservative fallback.
+   */
+  private suspend fun applyRateLimit(
+    connections: Int,
+    remaining: Long?,
+    reset: Long?,
+  ): Int {
+    if (remaining == null) return connections
+    if (remaining == 0L) {
+      val delaySec = reset?.coerceAtLeast(1) ?: 1L
+      KDownLogger.i("HttpSource") {
+        "Rate limit exhausted (remaining=0), " +
+          "delaying ${delaySec}s before download"
+      }
+      delay(delaySec * 1000)
+      return connections
+    }
+    if (remaining < connections) {
+      val capped = remaining.toInt().coerceAtLeast(1)
+      KDownLogger.i("HttpSource") {
+        "Capping connections from $connections to $capped " +
+          "based on RateLimit-Remaining=$remaining"
+      }
+      return capped
+    }
+    return connections
+  }
+
   private fun extractDispositionFileName(
     contentDisposition: String,
   ): String? {
@@ -431,6 +484,8 @@ internal class HttpDownloadSource(
     internal const val META_ETAG = "etag"
     internal const val META_LAST_MODIFIED = "lastModified"
     internal const val META_ACCEPT_RANGES = "acceptRanges"
+    internal const val META_RATE_LIMIT_REMAINING = "rateLimitRemaining"
+    internal const val META_RATE_LIMIT_RESET = "rateLimitReset"
 
     fun buildResumeState(
       etag: String?,
