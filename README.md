@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="art/icon-white.svg">
-    <source media="(prefers-color-scheme: light)" srcset="art/icon.svg">
-    <img alt="Ketch" src="art/icon.svg" height="128">
+    <source media="(prefers-color-scheme: light)" srcset="art/icon-app.svg">
+    <img alt="Ketch" src="art/icon-app.svg" height="128">
   </picture>
 </p>
 
