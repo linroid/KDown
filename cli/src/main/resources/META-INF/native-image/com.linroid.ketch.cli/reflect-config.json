@@ -156,6 +156,62 @@
     "allDeclaredMethods": true
   },
   {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$TaskAdded",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$TaskAdded$Companion",
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$TaskRemoved",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$TaskRemoved$Companion",
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$StateChanged",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$StateChanged$Companion",
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$Progress",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$Progress$Companion",
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$Error",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEvent$Error$Companion",
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "com.linroid.ketch.endpoints.model.TaskEventType",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
     "name": "kotlin.internal.jdk8.JDK8PlatformImplementations",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,

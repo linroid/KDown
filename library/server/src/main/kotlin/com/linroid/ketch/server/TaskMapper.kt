@@ -1,7 +1,6 @@
 package com.linroid.ketch.server
 
 import com.linroid.ketch.api.DownloadTask
-import com.linroid.ketch.endpoints.model.TaskEvent
 import com.linroid.ketch.endpoints.model.TaskSnapshot
 
 internal object TaskMapper {
@@ -13,17 +12,6 @@ internal object TaskMapper {
       state = task.state.value,
       segments = task.segments.value,
       createdAt = task.createdAt,
-    )
-  }
-
-  fun toEvent(
-    task: DownloadTask,
-    eventType: String,
-  ): TaskEvent {
-    return TaskEvent(
-      taskId = task.taskId,
-      type = eventType,
-      state = task.state.value,
     )
   }
 }

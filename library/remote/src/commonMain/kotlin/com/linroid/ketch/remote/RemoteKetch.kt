@@ -217,9 +217,9 @@ class RemoteKetch(
   }
 
   private suspend fun handleEvent(event: TaskEvent) {
-    log.i { "Handle event: ${event.type}" }
-    when (event.type) {
-      "task_added" -> {
+    log.i { "Handle event: ${event.eventType}" }
+    when (event) {
+      is TaskEvent.TaskAdded -> {
         try {
           val response = httpClient.get(
             Api.Tasks.ById(id = event.taskId),
@@ -234,13 +234,22 @@ class RemoteKetch(
         }
       }
 
-      "task_removed" -> {
+      is TaskEvent.TaskRemoved -> {
         removeTask(event.taskId)
       }
 
-      "state_changed", "progress" -> {
+      is TaskEvent.StateChanged -> {
         val task = taskMap[event.taskId] ?: return
         task.updateState(event.state)
+      }
+
+      is TaskEvent.Progress -> {
+        val task = taskMap[event.taskId] ?: return
+        task.updateState(event.state)
+      }
+
+      is TaskEvent.Error -> {
+        log.w { "Server error for task ${event.taskId}" }
       }
     }
   }
