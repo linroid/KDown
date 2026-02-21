@@ -1,6 +1,15 @@
 package com.linroid.ketch.endpoints.model
 
+import com.linroid.ketch.api.DownloadRequest
+import com.linroid.ketch.api.DownloadState
+import com.linroid.ketch.api.Segment
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
+
+@Serializable
+data class TaskList(
+  val tasks: List<TaskResponse>
+)
 
 /**
  * Response for a single download task.
@@ -8,15 +17,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class TaskResponse(
   val taskId: String,
-  val url: String,
-  val destination: String? = null,
-  val state: String,
-  val progress: ProgressResponse? = null,
-  val error: String? = null,
-  val outputPath: String? = null,
-  val segments: List<SegmentResponse> = emptyList(),
-  val createdAt: String,
-  val priority: String,
-  val speedLimitBytesPerSecond: Long = 0,
-  val connections: Int = 0,
+  val request: DownloadRequest,
+  val state: DownloadState,
+  val segments: List<Segment> = emptyList(),
+  val createdAt: Instant,
 )

@@ -6,6 +6,7 @@ import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.endpoints.model.TaskEvent
 import com.linroid.ketch.server.TaskMapper
 import io.ktor.server.routing.Route
+import io.ktor.server.sse.ServerSSESession
 import io.ktor.server.sse.sse
 import io.ktor.sse.ServerSentEvent
 import kotlinx.coroutines.Job
@@ -28,7 +29,9 @@ internal fun Route.eventRoutes(ketch: KetchApi) {
   sse("/api/events") {
     coroutineScope {
       val activeJobs = mutableMapOf<String, Job>()
-
+      for (task in ketch.tasks.value) {
+        activeJobs[task.taskId] = launch { trackTaskState(task) }
+      }
       ketch.tasks.collect { tasks ->
         val currentIds = tasks.map { it.taskId }.toSet()
         val trackedIds = activeJobs.keys.toSet()
@@ -39,13 +42,15 @@ internal fun Route.eventRoutes(ketch: KetchApi) {
           val event = TaskEvent(
             taskId = removedId,
             type = "task_removed",
-            state = "removed",
+            state = DownloadState.Canceled,
           )
-          send(ServerSentEvent(
-            data = json.encodeToString(event),
-            event = "task_removed",
-            id = removedId,
-          ))
+          send(
+            ServerSentEvent(
+              data = json.encodeToString(event),
+              event = "task_removed",
+              id = removedId,
+            ),
+          )
         }
 
         // Start trackers for new tasks
@@ -69,12 +74,14 @@ internal fun Route.eventRoutes(ketch: KetchApi) {
       val errorEvent = TaskEvent(
         taskId = taskId,
         type = "error",
-        state = "not_found",
+        state = DownloadState.Idle,
       )
-      send(ServerSentEvent(
-        data = json.encodeToString(errorEvent),
-        event = "error",
-      ))
+      send(
+        ServerSentEvent(
+          data = json.encodeToString(errorEvent),
+          event = "error",
+        ),
+      )
       return@sse
     }
     sendTaskEvent(task, "state_changed")
@@ -94,14 +101,16 @@ private suspend fun io.ktor.server.sse.ServerSSESession.trackTaskState(
   }
 }
 
-private suspend fun io.ktor.server.sse.ServerSSESession.sendTaskEvent(
+private suspend fun ServerSSESession.sendTaskEvent(
   task: DownloadTask,
   eventType: String,
 ) {
   val event = TaskMapper.toEvent(task, eventType)
-  send(ServerSentEvent(
-    data = json.encodeToString(event),
-    event = eventType,
-    id = task.taskId,
-  ))
+  send(
+    ServerSentEvent(
+      data = json.encodeToString(event),
+      event = eventType,
+      id = task.taskId,
+    ),
+  )
 }
