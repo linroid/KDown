@@ -37,6 +37,7 @@ internal class HttpDownloadSource(
   private val progressUpdateIntervalMs: Long = 200,
   private val segmentSaveIntervalMs: Long = 5000,
 ) : DownloadSource {
+  private val log = KetchLogger("HttpSource")
 
   override val type: String = TYPE
 
@@ -96,21 +97,19 @@ internal class HttpDownloadSource(
       existing.isNotEmpty() &&
       existing.any { it.downloadedBytes > 0 }
     ) {
-      KetchLogger.i("HttpSource") {
+      log.i {
         "Reusing segments with existing progress, " +
           "resegmenting to $connections connections"
       }
       SegmentCalculator.resegment(existing, connections)
     } else if (resolved.supportsResume && connections > 1) {
-      KetchLogger.i("HttpSource") {
+      log.i {
         "Server supports ranges. Using $connections " +
           "connections, totalBytes=$totalBytes"
       }
       SegmentCalculator.calculateSegments(totalBytes, connections)
     } else {
-      KetchLogger.i("HttpSource") {
-        "Single connection, totalBytes=$totalBytes"
-      }
+      log.i { "Single connection, totalBytes=$totalBytes" }
       SegmentCalculator.singleSegment(totalBytes)
     }
 
@@ -135,17 +134,13 @@ internal class HttpDownloadSource(
   ) {
     val state = Json.decodeFromString<HttpResumeState>(resumeState.data)
 
-    KetchLogger.i("HttpSource") {
-      "Resuming download for taskId=${context.taskId}"
-    }
+    log.i { "Resuming download for taskId=${context.taskId}" }
 
     val detector = RangeSupportDetector(httpEngine)
     val serverInfo = detector.detect(context.url, context.headers)
 
     if (state.etag != null && serverInfo.etag != state.etag) {
-      KetchLogger.w("HttpSource") {
-        "ETag mismatch - file has changed on server"
-      }
+      log.w { "ETag mismatch - file has changed on server" }
       throw KetchError.ValidationFailed(
         "ETag mismatch - file has changed on server"
       )
@@ -154,9 +149,7 @@ internal class HttpDownloadSource(
     if (state.lastModified != null &&
       serverInfo.lastModified != state.lastModified
     ) {
-      KetchLogger.w("HttpSource") {
-        "Last-Modified mismatch - file has changed on server"
-      }
+      log.w { "Last-Modified mismatch - file has changed on server" }
       throw KetchError.ValidationFailed(
         "Last-Modified mismatch - file has changed on server"
       )
@@ -172,7 +165,7 @@ internal class HttpDownloadSource(
     )
     val incompleteCount = segments.count { !it.isComplete }
     if (incompleteCount > 0 && connections != incompleteCount) {
-      KetchLogger.i("HttpSource") {
+      log.i {
         "Resegmenting for taskId=${context.taskId}: " +
           "$incompleteCount -> $connections connections"
       }
@@ -202,7 +195,7 @@ internal class HttpDownloadSource(
       context.fileAccessor.size()
     } catch (e: Exception) {
       if (e is CancellationException) throw e
-      KetchLogger.w("HttpSource") {
+      log.w {
         "Cannot read file size for taskId=${context.taskId}, " +
           "resetting segments"
       }
@@ -211,7 +204,7 @@ internal class HttpDownloadSource(
 
     val claimedProgress = segments.sumOf { it.downloadedBytes }
     if (fileSize < claimedProgress || fileSize < totalBytes) {
-      KetchLogger.w("HttpSource") {
+      log.w {
         "Local file integrity check failed for " +
           "taskId=${context.taskId}: fileSize=$fileSize, " +
           "claimedProgress=$claimedProgress, totalBytes=$totalBytes. " +
@@ -226,7 +219,7 @@ internal class HttpDownloadSource(
       }
       return segments.map { it.copy(downloadedBytes = 0) }
     }
-    KetchLogger.d("HttpSource") {
+    log.d {
       "Local file integrity check passed for " +
         "taskId=${context.taskId}: fileSize=$fileSize, " +
         "claimedProgress=$claimedProgress"
@@ -267,7 +260,7 @@ internal class HttpDownloadSource(
         context.segments.value, newCount
       )
       context.segments.value = currentSegments
-      KetchLogger.i("HttpSource") {
+      log.i {
         "Resegmented to $newCount connections for " +
           "taskId=${context.taskId}"
       }
@@ -336,9 +329,7 @@ internal class HttpDownloadSource(
           while (true) {
             delay(segmentSaveIntervalMs)
             context.segments.value = currentSegments()
-            KetchLogger.v("HttpSource") {
-              "Periodic segment save for taskId=${context.taskId}"
-            }
+            log.v { "Periodic segment save for taskId=${context.taskId}" }
           }
         }
 
@@ -353,7 +344,7 @@ internal class HttpDownloadSource(
           }
           context.pendingResegment =
             context.maxConnections.value
-          KetchLogger.i("HttpSource") {
+          log.i {
             "Connection change detected for " +
               "taskId=${context.taskId}: " +
               "$lastSeen -> ${context.pendingResegment}"
@@ -386,7 +377,7 @@ internal class HttpDownloadSource(
                 updatedSegments[completed.index] = completed
               }
               context.segments.value = currentSegments()
-              KetchLogger.d("HttpSource") {
+              log.d {
                 "Segment ${completed.index} completed for " +
                   "taskId=${context.taskId}"
               }
@@ -450,7 +441,7 @@ internal class HttpDownloadSource(
     if (remaining == null) return connections
     if (remaining == 0L) {
       val delaySec = reset?.coerceAtLeast(1) ?: 1L
-      KetchLogger.i("HttpSource") {
+      log.i {
         "Rate limit exhausted (remaining=0), " +
           "delaying ${delaySec}s before download"
       }
@@ -459,7 +450,7 @@ internal class HttpDownloadSource(
     }
     if (remaining < connections) {
       val capped = remaining.toInt().coerceAtLeast(1)
-      KetchLogger.i("HttpSource") {
+      log.i {
         "Capping connections from $connections to $capped " +
           "based on RateLimit-Remaining=$remaining"
       }

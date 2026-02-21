@@ -22,6 +22,7 @@ internal class ScheduleManager(
   private val scheduler: DownloadScheduler,
   private val scope: CoroutineScope,
 ) {
+  private val log = KetchLogger("ScheduleManager")
   private val mutex = Mutex()
   private val scheduledJobs = mutableMapOf<String, Job>()
 
@@ -36,7 +37,7 @@ internal class ScheduleManager(
     val conditions = request.conditions
 
     stateFlow.value = DownloadState.Scheduled(schedule)
-    KetchLogger.i("ScheduleManager") {
+    log.i {
       "Scheduling download: taskId=$taskId, schedule=$schedule, " +
         "conditions=${conditions.size}"
     }
@@ -46,9 +47,7 @@ internal class ScheduleManager(
         waitForSchedule(taskId, schedule)
         waitForConditions(taskId, conditions)
 
-        KetchLogger.i("ScheduleManager") {
-          "Schedule and conditions met for taskId=$taskId, enqueuing"
-        }
+        log.i { "Schedule and conditions met for taskId=$taskId, enqueuing" }
         scheduler.enqueue(
           taskId, request, createdAt, stateFlow, segmentsFlow
         )
@@ -73,7 +72,7 @@ internal class ScheduleManager(
     }
 
     stateFlow.value = DownloadState.Scheduled(schedule)
-    KetchLogger.i("ScheduleManager") {
+    log.i {
       "Rescheduling download: taskId=$taskId, schedule=$schedule, " +
         "conditions=${conditions.size}"
     }
@@ -83,7 +82,7 @@ internal class ScheduleManager(
         waitForSchedule(taskId, schedule)
         waitForConditions(taskId, conditions)
 
-        KetchLogger.i("ScheduleManager") {
+        log.i {
           "Reschedule conditions met for taskId=$taskId, enqueuing " +
             "with preferResume=true"
         }
@@ -102,9 +101,7 @@ internal class ScheduleManager(
     mutex.withLock {
       scheduledJobs.remove(taskId)?.let { job ->
         job.cancel()
-        KetchLogger.d("ScheduleManager") {
-          "Canceled scheduled task: taskId=$taskId"
-        }
+        log.d { "Canceled scheduled task: taskId=$taskId" }
       }
     }
   }
@@ -119,7 +116,7 @@ internal class ScheduleManager(
         val now = Clock.System.now()
         val waitDuration = schedule.startAt - now
         if (waitDuration.isPositive()) {
-          KetchLogger.d("ScheduleManager") {
+          log.d {
             "Waiting ${waitDuration.inWholeSeconds}s for " +
               "taskId=$taskId (startAt=${schedule.startAt})"
           }
@@ -127,7 +124,7 @@ internal class ScheduleManager(
         }
       }
       is DownloadSchedule.AfterDelay -> {
-        KetchLogger.d("ScheduleManager") {
+        log.d {
           "Waiting ${schedule.delay.inWholeSeconds}s delay " +
             "for taskId=$taskId"
         }
@@ -142,9 +139,7 @@ internal class ScheduleManager(
   ) {
     if (conditions.isEmpty()) return
 
-    KetchLogger.d("ScheduleManager") {
-      "Waiting for ${conditions.size} condition(s) for taskId=$taskId"
-    }
+    log.d { "Waiting for ${conditions.size} condition(s) for taskId=$taskId" }
 
     val flows = conditions.map { it.isMet() }
     val combined = when (flows.size) {
@@ -154,9 +149,7 @@ internal class ScheduleManager(
 
     combined.first { it }
 
-    KetchLogger.d("ScheduleManager") {
-      "All conditions met for taskId=$taskId"
-    }
+    log.d { "All conditions met for taskId=$taskId" }
   }
 
   /** Whether a task is currently waiting for its schedule/conditions. */

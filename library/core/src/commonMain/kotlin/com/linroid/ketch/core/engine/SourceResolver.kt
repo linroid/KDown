@@ -12,8 +12,10 @@ import com.linroid.ketch.core.log.KetchLogger
  * fallback.
  */
 internal class SourceResolver(private val sources: List<DownloadSource>) {
+  private val log = KetchLogger("SourceResolver")
+
   init {
-    KetchLogger.d("SourceResolver") {
+    log.d {
       "Initialized with ${sources.size} source(s): " +
         sources.joinToString { it.type }
     }
@@ -22,23 +24,17 @@ internal class SourceResolver(private val sources: List<DownloadSource>) {
   fun resolve(url: String): DownloadSource {
     val source = sources.firstOrNull { it.canHandle(url) }
     if (source != null) {
-      KetchLogger.d("SourceResolver") {
-        "Resolved source '${source.type}' for URL: $url"
-      }
+      log.d { "Resolved source '${source.type}' for URL: $url" }
       return source
     }
-    KetchLogger.e("SourceResolver") {
-      "No source found for URL: $url"
-    }
+    log.e { "No source found for URL: $url" }
     throw KetchError.Unsupported
   }
 
   fun resolveByType(type: String): DownloadSource {
     val source = sources.firstOrNull { it.type == type }
     if (source != null) return source
-    KetchLogger.e("SourceResolver") {
-      "No source found for type: $type"
-    }
+    log.e { "No source found for type: $type" }
     throw KetchError.Unsupported
   }
 }

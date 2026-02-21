@@ -11,6 +11,7 @@ internal class TokenBucket(
   bytesPerSecond: Long,
   private val burstSize: Long = 65536,
 ) : SpeedLimiter {
+  private val log = KetchLogger("TokenBucket")
   private val mutex = Mutex()
   private var tokens: Long = burstSize
   private var lastRefillTime: Instant = Clock.System.now()
@@ -33,9 +34,7 @@ internal class TokenBucket(
         }
       }
       if (waitMs > 0) {
-        KetchLogger.v("TokenBucket") {
-          "Throttling: waiting ${waitMs}ms for $remaining bytes"
-        }
+        log.v { "Throttling: waiting ${waitMs}ms for $remaining bytes" }
         delay(waitMs)
       }
     }
@@ -43,9 +42,7 @@ internal class TokenBucket(
 
   fun updateRate(newBytesPerSecond: Long) {
     rate = newBytesPerSecond.toDouble()
-    KetchLogger.d("TokenBucket") {
-      "Rate updated to $newBytesPerSecond bytes/sec"
-    }
+    log.d { "Rate updated to $newBytesPerSecond bytes/sec" }
   }
 
   private fun refill() {
