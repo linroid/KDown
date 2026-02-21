@@ -38,6 +38,13 @@ class KtorHttpEngine(
         customHeaders.forEach { (name, value) -> header(name, value) }
       }
 
+      KDownLogger.d("KtorHttpEngine") {
+        "HEAD ${response.status.value} headers: " +
+          response.headers.entries().joinToString { (k, v) ->
+            "$k=${v.joinToString(",")}"
+          }
+      }
+
       if (!response.status.isSuccess()) {
         KDownLogger.e("KtorHttpEngine") {
           "HTTP error ${response.status.value}: ${response.status.description}"
@@ -108,6 +115,14 @@ class KtorHttpEngine(
         }
       }.execute { response ->
         val status = response.status
+
+        KDownLogger.d("KtorHttpEngine") {
+          "GET ${status.value} headers: " +
+            response.headers.entries().joinToString { (k, v) ->
+              "$k=${v.joinToString(",")}"
+            }
+        }
+
         if (!status.isSuccess()) {
           KDownLogger.e("KtorHttpEngine") {
             "HTTP error ${status.value}: ${status.description}"
