@@ -10,8 +10,8 @@ import com.linroid.ketch.api.log.KetchLogger
 import com.linroid.ketch.endpoints.Api
 import com.linroid.ketch.endpoints.model.ResolveUrlRequest
 import com.linroid.ketch.endpoints.model.TaskEvent
-import com.linroid.ketch.endpoints.model.TaskList
-import com.linroid.ketch.endpoints.model.TaskResponse
+import com.linroid.ketch.endpoints.model.TaskSnapshot
+import com.linroid.ketch.endpoints.model.TasksResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -206,13 +206,13 @@ class RemoteKetch(
       throw UnauthorizedException()
     }
     if (response.status.isSuccess()) {
-      val taskList: TaskList = response.body()
-      log.i { "Fetched ${taskList.tasks.size} tasks" }
+      val snapshots: TasksResponse = response.body()
+      log.i { "Fetched ${snapshots.tasks.size} tasks" }
       taskMap.clear()
-      val tasks = taskList.tasks.map(::createRemoteTask)
+      val tasks = snapshots.tasks.map(::createRemoteTask)
       tasks.forEach { taskMap[it.taskId] = it }
       _tasks.value = tasks
-      log.i { "Fetched ${taskList.tasks.size} tasks -> ${tasks.size}" }
+      log.i { "Fetched ${snapshots.tasks.size} tasks -> ${tasks.size}" }
     }
   }
 
@@ -225,7 +225,7 @@ class RemoteKetch(
             Api.Tasks.ById(id = event.taskId),
           )
           if (response.status.isSuccess()) {
-            val wire: TaskResponse = response.body()
+            val wire: TaskSnapshot = response.body()
             val task = createRemoteTask(wire)
             addOrUpdate(task)
           }
@@ -245,7 +245,7 @@ class RemoteKetch(
     }
   }
 
-  private fun createRemoteTask(wire: TaskResponse): RemoteDownloadTask {
+  private fun createRemoteTask(wire: TaskSnapshot): RemoteDownloadTask {
     return RemoteDownloadTask(
       taskId = wire.taskId,
       request = wire.request,

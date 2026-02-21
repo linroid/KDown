@@ -13,7 +13,7 @@ import com.linroid.ketch.endpoints.Api
 import com.linroid.ketch.endpoints.model.ConnectionsRequest
 import com.linroid.ketch.endpoints.model.PriorityRequest
 import com.linroid.ketch.endpoints.model.SpeedLimitRequest
-import com.linroid.ketch.endpoints.model.TaskResponse
+import com.linroid.ketch.endpoints.model.TaskSnapshot
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.resources.delete
@@ -126,7 +126,7 @@ internal class RemoteDownloadTask(
     )
   }
 
-  private fun update(response: TaskResponse) {
+  private fun update(response: TaskSnapshot) {
     _state.value = response.state
     _segments.value = response.segments
   }

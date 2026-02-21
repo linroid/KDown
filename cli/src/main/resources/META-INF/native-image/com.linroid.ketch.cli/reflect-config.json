@@ -10,13 +10,13 @@
     "allDeclaredMethods": true
   },
   {
-    "name": "com.linroid.ketch.endpoints.model.TaskResponse",
+    "name": "com.linroid.ketch.endpoints.model.TaskSnapshot",
     "allDeclaredFields": true,
     "allDeclaredMethods": true,
     "allDeclaredConstructors": true
   },
   {
-    "name": "com.linroid.ketch.endpoints.model.TaskResponse$Companion",
+    "name": "com.linroid.ketch.endpoints.model.TaskSnapshot$Companion",
     "allDeclaredMethods": true
   },
   {

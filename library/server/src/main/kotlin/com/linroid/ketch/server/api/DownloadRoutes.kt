@@ -1,7 +1,6 @@
 package com.linroid.ketch.server.api
 
 import com.linroid.ketch.api.Destination
-import com.linroid.ketch.api.DownloadPriority
 import com.linroid.ketch.api.DownloadRequest
 import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.endpoints.Api
@@ -9,7 +8,7 @@ import com.linroid.ketch.endpoints.model.ConnectionsRequest
 import com.linroid.ketch.endpoints.model.ErrorResponse
 import com.linroid.ketch.endpoints.model.PriorityRequest
 import com.linroid.ketch.endpoints.model.SpeedLimitRequest
-import com.linroid.ketch.endpoints.model.TaskList
+import com.linroid.ketch.endpoints.model.TasksResponse
 import com.linroid.ketch.server.TaskMapper
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
@@ -26,7 +25,7 @@ import io.ktor.server.routing.Route
 internal fun Route.downloadRoutes(ketch: KetchApi) {
   get<Api.Tasks> {
     val tasks = ketch.tasks.value
-    call.respond(TaskList(tasks.map(TaskMapper::toResponse)))
+    call.respond(TasksResponse(tasks.map(TaskMapper::toSnapshot)))
   }
 
   post<Api.Tasks> {
@@ -34,7 +33,7 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
     val task = ketch.download(request)
     call.respond(
       HttpStatusCode.Created,
-      TaskMapper.toResponse(task),
+      TaskMapper.toSnapshot(task),
     )
   }
 
@@ -51,7 +50,7 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
       )
       return@get
     }
-    call.respond(TaskMapper.toResponse(task))
+    call.respond(TaskMapper.toSnapshot(task))
   }
 
   post<Api.Tasks.ById.Pause> { resource ->
@@ -67,7 +66,7 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
       return@post
     }
     task.pause()
-    call.respond(TaskMapper.toResponse(task))
+    call.respond(TaskMapper.toSnapshot(task))
   }
 
   post<Api.Tasks.ById.Resume> { resource ->
@@ -83,7 +82,7 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
       return@post
     }
     task.resume(resource.destination?.let { Destination(it) })
-    call.respond(TaskMapper.toResponse(task))
+    call.respond(TaskMapper.toSnapshot(task))
   }
 
   post<Api.Tasks.ById.Cancel> { resource ->
@@ -99,7 +98,7 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
       return@post
     }
     task.cancel()
-    call.respond(TaskMapper.toResponse(task))
+    call.respond(TaskMapper.toSnapshot(task))
   }
 
   delete<Api.Tasks.ById> { resource ->
@@ -133,7 +132,7 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
     }
     val request = call.receive<SpeedLimitRequest>()
     task.setSpeedLimit(request.limit)
-    call.respond(TaskMapper.toResponse(task))
+    call.respond(TaskMapper.toSnapshot(task))
   }
 
   put<Api.Tasks.ById.Priority> { resource ->
@@ -150,7 +149,7 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
     }
     val request = call.receive<PriorityRequest>()
     task.setPriority(request.priority)
-    call.respond(TaskMapper.toResponse(task))
+    call.respond(TaskMapper.toSnapshot(task))
   }
 
   put<Api.Tasks.ById.Connections> { resource ->
@@ -177,6 +176,6 @@ internal fun Route.downloadRoutes(ketch: KetchApi) {
       return@put
     }
     task.setConnections(body.connections)
-    call.respond(TaskMapper.toResponse(task))
+    call.respond(TaskMapper.toSnapshot(task))
   }
 }

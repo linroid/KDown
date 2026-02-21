@@ -9,8 +9,8 @@ import com.linroid.ketch.api.SpeedLimit
 import com.linroid.ketch.endpoints.model.ErrorResponse
 import com.linroid.ketch.endpoints.model.PriorityRequest
 import com.linroid.ketch.endpoints.model.SpeedLimitRequest
-import com.linroid.ketch.endpoints.model.TaskList
-import com.linroid.ketch.endpoints.model.TaskResponse
+import com.linroid.ketch.endpoints.model.TaskSnapshot
+import com.linroid.ketch.endpoints.model.TasksResponse
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -58,7 +58,7 @@ class DownloadRoutesTest {
         )
       }
       assertEquals(HttpStatusCode.Created, response.status)
-      val task = json.decodeFromString<TaskResponse>(
+      val task = json.decodeFromString<TaskSnapshot>(
         response.bodyAsText()
       )
       assertEquals(
@@ -98,7 +98,7 @@ class DownloadRoutesTest {
         )
       }
       assertEquals(HttpStatusCode.Created, response.status)
-      val task = json.decodeFromString<TaskResponse>(
+      val task = json.decodeFromString<TaskSnapshot>(
         response.bodyAsText()
       )
       assertEquals(
@@ -149,7 +149,7 @@ class DownloadRoutesTest {
         )
       )
     }
-    val created = json.decodeFromString<TaskResponse>(
+    val created = json.decodeFromString<TaskSnapshot>(
       createResponse.bodyAsText()
     )
 
@@ -158,7 +158,7 @@ class DownloadRoutesTest {
       "/api/tasks/${created.taskId}"
     )
     assertEquals(HttpStatusCode.OK, getResponse.status)
-    val fetched = json.decodeFromString<TaskResponse>(
+    val fetched = json.decodeFromString<TaskSnapshot>(
       getResponse.bodyAsText()
     )
     assertEquals(created.taskId, fetched.taskId)
@@ -198,7 +198,7 @@ class DownloadRoutesTest {
 
       val listResponse = client.get("/api/tasks")
       assertEquals(HttpStatusCode.OK, listResponse.status)
-      val taskList = json.decodeFromString<TaskList>(
+      val taskList = json.decodeFromString<TasksResponse>(
         listResponse.bodyAsText()
       )
       assertEquals(2, taskList.tasks.size)
@@ -224,7 +224,7 @@ class DownloadRoutesTest {
           )
         )
       }
-      val created = json.decodeFromString<TaskResponse>(
+      val created = json.decodeFromString<TaskSnapshot>(
         createResponse.bodyAsText()
       )
 
@@ -232,7 +232,7 @@ class DownloadRoutesTest {
         "/api/tasks/${created.taskId}/cancel"
       )
       assertEquals(HttpStatusCode.OK, cancelResponse.status)
-      val result = json.decodeFromString<TaskResponse>(
+      val result = json.decodeFromString<TaskSnapshot>(
         cancelResponse.bodyAsText()
       )
       // Task reaches a terminal state (canceled or failed,
@@ -262,7 +262,7 @@ class DownloadRoutesTest {
         )
       )
     }
-    val created = json.decodeFromString<TaskResponse>(
+    val created = json.decodeFromString<TaskSnapshot>(
       createResponse.bodyAsText()
     )
 
@@ -394,7 +394,7 @@ class DownloadRoutesTest {
           )
         )
       }
-      val created = json.decodeFromString<TaskResponse>(
+      val created = json.decodeFromString<TaskSnapshot>(
         createResponse.bodyAsText()
       )
 
@@ -427,7 +427,7 @@ class DownloadRoutesTest {
       )
     }
     assertEquals(HttpStatusCode.Created, response.status)
-    val task = json.decodeFromString<TaskResponse>(
+    val task = json.decodeFromString<TaskSnapshot>(
       response.bodyAsText()
     )
     assertEquals(
