@@ -221,7 +221,7 @@ class RemoteKetch(
   }
 
   private suspend fun handleEvent(event: TaskEvent) {
-    log.i { "Handle event: ${event}" }
+    log.i { "Handle event: $event" }
     when (event) {
       is TaskEvent.TaskAdded -> {
         try {
