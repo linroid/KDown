@@ -2,6 +2,7 @@ package com.linroid.kdown.core.file
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
@@ -28,7 +29,7 @@ internal class ContentUriFileAccessor(
   private val fileDescriptor = pfd?.fileDescriptor
     ?: throw IOException(
       "Failed to open file descriptor for Uri=$uri; " +
-        "the Uri may be invalid or permissions may be missing."
+        "the Uri may be invalid or permissions may be missing.",
     )
 
   override suspend fun writeAt(offset: Long, data: ByteArray) {
@@ -69,7 +70,7 @@ internal class ContentUriFileAccessor(
     withContext(Dispatchers.IO) {
       mutex.withLock {
         close()
-        context.contentResolver.delete(uri, null, null)
+        DocumentsContract.deleteDocument(context.contentResolver, uri)
       }
     }
   }

@@ -35,7 +35,7 @@ class SqliteTaskStore(driver: SqlDriver) : TaskStore {
       request_json = json.encodeToString(
         DownloadRequest.serializer(), record.request
       ),
-      dest_path = record.outputPath,
+      output_path = record.outputPath,
       state = record.state.name,
       total_bytes = record.totalBytes,
       downloaded_bytes = record.downloadedBytes,
@@ -78,7 +78,7 @@ class SqliteTaskStore(driver: SqlDriver) : TaskStore {
       request = json.decodeFromString(
         DownloadRequest.serializer(), request_json
       ),
-      outputPath = dest_path,
+      outputPath = output_path,
       state = TaskState.valueOf(state),
       totalBytes = total_bytes,
       downloadedBytes = downloaded_bytes,

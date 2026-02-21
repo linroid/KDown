@@ -17,7 +17,7 @@ import kotlin.time.Instant
 data class TaskRecord(
   val taskId: String,
   val request: DownloadRequest,
-  val outputPath: String,
+  val outputPath: String? = null,
   val state: TaskState = TaskState.PENDING,
   val totalBytes: Long = -1,
   val downloadedBytes: Long = 0,

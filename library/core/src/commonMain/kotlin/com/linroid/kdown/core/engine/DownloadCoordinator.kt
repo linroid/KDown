@@ -63,19 +63,11 @@ internal class DownloadCoordinator(
     stateFlow: MutableStateFlow<DownloadState>,
     segmentsFlow: MutableStateFlow<List<Segment>>,
   ) {
-    val initialDestPath = resolveDestPath(
-      destination = request.destination,
-      defaultDir = config.defaultDirectory,
-      serverFileName = null,
-      deduplicate = false,
-    )
-
     val now = Clock.System.now()
     taskStore.save(
       TaskRecord(
         taskId = taskId,
         request = request,
-        outputPath = initialDestPath,
         state = TaskState.PENDING,
         createdAt = now,
         updatedAt = now,
@@ -218,6 +210,9 @@ internal class DownloadCoordinator(
       serverFileName = fileName,
       deduplicate = true,
     )
+    KDownLogger.d("Coordinator") {
+      "Resolved outputPath=$outputPath"
+    }
 
     val now = Clock.System.now()
     updateTaskRecord(taskId) {
@@ -435,7 +430,13 @@ internal class DownloadCoordinator(
         "source '${source.type}'"
     }
 
-    val fileAccessor = createFileAccessor(taskRecord.outputPath)
+    val outputPath = taskRecord.outputPath
+      ?: throw KDownError.Unknown(
+        IllegalStateException(
+          "No outputPath for taskId=${taskRecord.taskId}"
+        )
+      )
+    val fileAccessor = createFileAccessor(outputPath)
 
     val taskLimiter = mutex.withLock {
       activeDownloads[taskId]?.let {
@@ -489,7 +490,7 @@ internal class DownloadCoordinator(
       }
 
       stateFlow.value =
-        DownloadState.Completed(taskRecord.outputPath)
+        DownloadState.Completed(outputPath)
     } finally {
       fileAccessor.close()
       withContext(NonCancellable) {

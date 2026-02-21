@@ -436,7 +436,7 @@ class KDown(
       )
 
       TaskState.COMPLETED -> DownloadState.Completed(
-        record.outputPath,
+        record.outputPath ?: "",
       )
 
       TaskState.FAILED -> DownloadState.Failed(
