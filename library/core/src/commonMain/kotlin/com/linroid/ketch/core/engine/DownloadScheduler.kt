@@ -10,9 +10,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.concurrent.Volatile
 import kotlin.time.Instant
 
 internal class DownloadScheduler(
+  @Volatile
   internal var queueConfig: QueueConfig,
   private val coordinator: DownloadCoordinator,
   private val scope: CoroutineScope,

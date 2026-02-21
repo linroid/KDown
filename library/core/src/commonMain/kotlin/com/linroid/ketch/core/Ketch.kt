@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
@@ -69,6 +70,7 @@ class Ketch(
 ) : KetchApi {
   private val startMark = TimeSource.Monotonic.markNow()
 
+  @Volatile
   private var currentConfig: DownloadConfig = config
 
   private val globalLimiter = DelegatingSpeedLimiter(

@@ -44,6 +44,7 @@ internal class DownloadCoordinator(
 ) {
   private val log = KetchLogger("Coordinator")
   private val mutex = Mutex()
+  private val recordMutex = Mutex()
   private val activeDownloads = mutableMapOf<String, ActiveDownload>()
 
   private class ActiveDownload(
@@ -211,6 +212,39 @@ internal class DownloadCoordinator(
     )
     log.d { "Resolved outputPath=$outputPath" }
 
+    if (totalBytes == 0L) {
+      log.i { "Zero-byte file for taskId=$taskId, completing" }
+      val fileAccessor = createFileAccessor(outputPath)
+      try {
+        fileAccessor.flush()
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        throw KetchError.Disk(e)
+      } finally {
+        try {
+          fileAccessor.close()
+        } catch (e: Exception) {
+          log.w(e) { "Failed to close file for taskId=$taskId" }
+        }
+      }
+      updateTaskRecord(taskId) {
+        it.copy(
+          outputPath = outputPath,
+          state = TaskState.COMPLETED,
+          totalBytes = 0,
+          downloadedBytes = 0,
+          segments = null,
+          sourceType = source.type,
+          updatedAt = Clock.System.now(),
+        )
+      }
+      stateFlow.value = DownloadState.Completed(outputPath)
+      withContext(NonCancellable) {
+        mutex.withLock { activeDownloads.remove(taskId) }
+      }
+      return
+    }
+
     val now = Clock.System.now()
     updateTaskRecord(taskId) {
       it.copy(
@@ -240,6 +274,7 @@ internal class DownloadCoordinator(
       )
     }
 
+    var completed = false
     try {
       val context = buildContext(
         taskId, request.url, request, fileAccessor,
@@ -275,12 +310,30 @@ internal class DownloadCoordinator(
         )
       }
 
+      completed = true
       log.i { "Download completed successfully for taskId=$taskId" }
       stateFlow.value =
         DownloadState.Completed(outputPath)
     } finally {
-      fileAccessor.close()
+      try {
+        fileAccessor.close()
+      } catch (e: Exception) {
+        log.w(e) { "Failed to close file for taskId=$taskId" }
+      }
       withContext(NonCancellable) {
+        if (!completed && stateFlow.value !is DownloadState.Paused &&
+          stateFlow.value !is DownloadState.Queued &&
+          stateFlow.value !is DownloadState.Canceled
+        ) {
+          try {
+            fileAccessor.delete()
+            log.d { "Deleted partial file for failed taskId=$taskId" }
+          } catch (e: Exception) {
+            log.w(e) {
+              "Failed to delete partial file for taskId=$taskId"
+            }
+          }
+        }
         mutex.withLock {
           activeDownloads.remove(taskId)
         }
@@ -464,6 +517,7 @@ internal class DownloadCoordinator(
       activeDownloads[taskId]?.context = context
     }
 
+    var completed = false
     try {
       downloadWithRetry(taskId, context) {
         source.resume(context, resumeState)
@@ -486,12 +540,28 @@ internal class DownloadCoordinator(
         )
       }
 
+      completed = true
       log.i { "Resume completed successfully for taskId=$taskId" }
       stateFlow.value =
         DownloadState.Completed(outputPath)
     } finally {
-      fileAccessor.close()
+      try {
+        fileAccessor.close()
+      } catch (e: Exception) {
+        log.w(e) { "Failed to close file for taskId=$taskId" }
+      }
       withContext(NonCancellable) {
+        if (!completed && stateFlow.value !is DownloadState.Paused &&
+          stateFlow.value !is DownloadState.Queued &&
+          stateFlow.value !is DownloadState.Canceled
+        ) {
+          try {
+            fileAccessor.delete()
+            log.d { "Deleted partial file for failed taskId=$taskId" }
+          } catch (e: Exception) {
+            log.w(e) { "Failed to delete partial file for taskId=$taskId" }
+          }
+        }
         mutex.withLock {
           activeDownloads.remove(taskId)
         }
@@ -632,11 +702,10 @@ internal class DownloadCoordinator(
   private suspend fun updateTaskRecord(
     taskId: String,
     update: (TaskRecord) -> TaskRecord,
-  ) {
-    val existing = taskStore.load(taskId)
-    if (existing == null) {
-      log.w { "TaskRecord not found for taskId=$taskId, skipping update" }
-      return
+  ) = recordMutex.withLock {
+    val existing = taskStore.load(taskId) ?: run {
+      log.w { "TaskRecord not found for taskId=$taskId" }
+      return@withLock
     }
     taskStore.save(update(existing))
   }
@@ -658,6 +727,12 @@ internal class DownloadCoordinator(
   }
 
   suspend fun setTaskSpeedLimit(taskId: String, limit: SpeedLimit) {
+    updateTaskRecord(taskId) {
+      it.copy(
+        request = it.request.copy(speedLimit = limit),
+        updatedAt = Clock.System.now(),
+      )
+    }
     mutex.withLock {
       val active = activeDownloads[taskId] ?: return
       val current = active.taskLimiter.delegate
