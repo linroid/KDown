@@ -21,8 +21,8 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class DispatcherConfig(
-  val networkPoolSize: Int = 0,
-  val ioPoolSize: Int = 0,
+  val networkPoolSize: Int = 8,
+  val ioPoolSize: Int = 4,
 ) {
   init {
     require(networkPoolSize >= 0) {
