@@ -13,6 +13,7 @@ import com.linroid.ketch.api.isDirectory
 import com.linroid.ketch.api.isFile
 import com.linroid.ketch.api.isName
 import com.linroid.ketch.api.log.KetchLogger
+import com.linroid.ketch.core.KetchDispatchers
 import com.linroid.ketch.core.file.FileAccessor
 import com.linroid.ketch.core.file.FileNameResolver
 import com.linroid.ketch.core.file.createFileAccessor
@@ -21,7 +22,9 @@ import com.linroid.ketch.core.task.TaskRecord
 import com.linroid.ketch.core.task.TaskState
 import com.linroid.ketch.core.task.TaskStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -41,8 +44,9 @@ internal class DownloadCoordinator(
   private val config: DownloadConfig,
   private val fileNameResolver: FileNameResolver,
   private val globalLimiter: SpeedLimiter = SpeedLimiter.Unlimited,
-  private val scope: CoroutineScope,
+  private val dispatchers: KetchDispatchers,
 ) {
+  private val scope: CoroutineScope = CoroutineScope(dispatchers.network)
   private val log = KetchLogger("Coordinator")
   private val mutex = Mutex()
   private val recordMutex = Mutex()
@@ -207,7 +211,7 @@ internal class DownloadCoordinator(
 
     if (totalBytes == 0L) {
       log.i { "Zero-byte file for taskId=$taskId, completing" }
-      val fileAccessor = createFileAccessor(outputPath)
+      val fileAccessor = createFileAccessor(outputPath, dispatchers.io)
       try {
         fileAccessor.flush()
       } catch (e: Exception) {
@@ -254,7 +258,7 @@ internal class DownloadCoordinator(
       )
     }
 
-    val fileAccessor = createFileAccessor(outputPath)
+    val fileAccessor = createFileAccessor(outputPath, dispatchers.io)
 
     val taskLimiter = mutex.withLock {
       activeDownloads[taskId]?.let {
@@ -478,7 +482,7 @@ internal class DownloadCoordinator(
           "No outputPath for taskId=${taskRecord.taskId}",
         ),
       )
-    val fileAccessor = createFileAccessor(outputPath)
+    val fileAccessor = createFileAccessor(outputPath, dispatchers.io)
 
     val taskLimiter = mutex.withLock {
       activeDownloads[taskId]?.let {

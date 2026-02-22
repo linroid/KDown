@@ -34,9 +34,8 @@ class KtorHttpEngine(
   override suspend fun head(url: String, headers: Map<String, String>): ServerInfo {
     try {
       log.d { "HEAD request: $url" }
-      val customHeaders = headers
       val response = client.head(url) {
-        customHeaders.forEach { (name, value) -> header(name, value) }
+        headers.forEach { (name, value) -> header(name, value) }
       }
 
       log.d {

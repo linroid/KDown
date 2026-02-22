@@ -30,7 +30,6 @@ import com.linroid.ketch.core.task.TaskRecord
 import com.linroid.ketch.core.task.TaskState
 import com.linroid.ketch.core.task.TaskStore
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,6 +56,8 @@ import kotlin.uuid.Uuid
  * @param additionalSources extra [DownloadSource] implementations
  *   (e.g., torrent, media). HTTP is always included as a fallback.
  * @param logger logging backend
+ * @param dispatchers dedicated dispatchers for task management,
+ *   network operations, and file I/O
  */
 class Ketch(
   private val httpEngine: HttpEngine,
@@ -66,6 +67,10 @@ class Ketch(
   private val fileNameResolver: FileNameResolver = DefaultFileNameResolver(),
   additionalSources: List<DownloadSource> = emptyList(),
   logger: Logger = Logger.None,
+  private val dispatchers: KetchDispatchers = KetchDispatchers(
+    config.dispatcherConfig.networkPoolSize,
+    config.dispatcherConfig.ioPoolSize,
+  ),
 ) : KetchApi {
   private val startMark = TimeSource.Monotonic.markNow()
 
@@ -95,7 +100,8 @@ class Ketch(
 
   private val log = KetchLogger("Ketch")
 
-  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+  /** Scope for task coordination (scheduling, queue, state). */
+  private val scope = CoroutineScope(SupervisorJob() + dispatchers.main.limitedParallelism(1))
 
   private val coordinator = DownloadCoordinator(
     sourceResolver = sourceResolver,
@@ -103,7 +109,7 @@ class Ketch(
     config = config,
     fileNameResolver = fileNameResolver,
     globalLimiter = globalLimiter,
-    scope = scope,
+    dispatchers = dispatchers,
   )
 
   private val scheduler = DownloadQueue(
@@ -360,5 +366,6 @@ class Ketch(
     log.i { "Closing Ketch" }
     httpEngine.close()
     scope.cancel()
+    dispatchers.close()
   }
 }
