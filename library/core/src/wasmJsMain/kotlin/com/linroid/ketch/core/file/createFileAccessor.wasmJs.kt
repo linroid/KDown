@@ -5,7 +5,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 @Suppress("UNUSED_PARAMETER")
 actual fun createFileAccessor(
   path: String,
-  dispatcher: CoroutineDispatcher,
+  ioDispatcher: CoroutineDispatcher,
 ): FileAccessor {
   return WasmFileAccessor()
 }

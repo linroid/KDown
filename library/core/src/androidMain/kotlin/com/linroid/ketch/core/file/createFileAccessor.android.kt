@@ -17,14 +17,14 @@ import java.io.RandomAccessFile
  */
 actual fun createFileAccessor(
   path: String,
-  dispatcher: CoroutineDispatcher,
+  ioDispatcher: CoroutineDispatcher,
 ): FileAccessor {
   val uri = Uri.parse(path)
   return if (uri.isRelative) {
-    PathFileAccessor(path, dispatcher) { realPath ->
+    PathFileAccessor(path, ioDispatcher) { realPath ->
       JvmRandomAccessHandle(RandomAccessFile(realPath, "rw"))
     }
   } else {
-    ContentUriFileAccessor(AndroidContext.get(), uri, dispatcher)
+    ContentUriFileAccessor(AndroidContext.get(), uri, ioDispatcher)
   }
 }
