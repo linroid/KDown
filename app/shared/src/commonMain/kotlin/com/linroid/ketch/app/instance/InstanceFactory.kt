@@ -1,10 +1,10 @@
 package com.linroid.ketch.app.instance
 
 import com.linroid.ketch.api.KetchApi
-import com.linroid.ketch.api.config.DownloadConfig
-import com.linroid.ketch.api.config.RemoteConfig
-import com.linroid.ketch.core.Ketch
+import com.linroid.ketch.api.config.CoreConfig
 import com.linroid.ketch.api.log.Logger
+import com.linroid.ketch.config.RemoteConfig
+import com.linroid.ketch.core.Ketch
 import com.linroid.ketch.core.task.TaskStore
 import com.linroid.ketch.engine.KtorHttpEngine
 import com.linroid.ketch.remote.RemoteKetch
@@ -30,15 +30,14 @@ import com.linroid.ketch.remote.RemoteKetch
 class InstanceFactory(
   taskStore: TaskStore? = null,
   defaultDirectory: String = "downloads",
-  downloadConfig: DownloadConfig = DownloadConfig(
+  coreConfig: CoreConfig = CoreConfig(
     defaultDirectory = defaultDirectory,
   ),
   val deviceName: String = "Embedded",
   private val embeddedFactory: (() -> Ketch)? = taskStore?.let { ts ->
-    { createDefaultEmbeddedKetch(ts, downloadConfig, deviceName) }
+    { createDefaultEmbeddedKetch(ts, coreConfig, deviceName) }
   },
-  private val localServerFactory:
-    ((port: Int, apiToken: String?, KetchApi) -> LocalServerHandle)? = null,
+  private val localServerFactory: ((KetchApi) -> LocalServerHandle)? = null,
 ) {
   /** Whether an embedded instance is available. */
   val hasEmbedded: Boolean get() = embeddedFactory != null
@@ -53,7 +52,7 @@ class InstanceFactory(
   fun createEmbedded(): EmbeddedInstance {
     val ketch = embeddedFactory?.invoke()
       ?: throw UnsupportedOperationException(
-        "No embedded instance available"
+        "No embedded instance available",
       )
     return EmbeddedInstance(
       instance = ketch,
@@ -87,16 +86,12 @@ class InstanceFactory(
    * Start a local HTTP server exposing [api].
    * Does not change the active instance.
    */
-  fun startServer(
-    port: Int,
-    apiToken: String?,
-    api: KetchApi,
-  ) {
+  fun startServer(api: KetchApi) {
     val factory = localServerFactory
       ?: throw UnsupportedOperationException(
-        "Local server not supported on this platform"
+        "Local server not supported on this platform",
       )
-    localServer = factory(port, apiToken, api)
+    localServer = factory(api)
   }
 
   /** Stop the local server if running (does not close Ketch). */
@@ -108,7 +103,7 @@ class InstanceFactory(
 
 private fun createDefaultEmbeddedKetch(
   taskStore: TaskStore,
-  config: DownloadConfig,
+  config: CoreConfig,
   name: String,
 ): Ketch {
   return Ketch(

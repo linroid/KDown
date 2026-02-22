@@ -5,7 +5,7 @@ import com.linroid.ketch.api.DownloadPriority
 import com.linroid.ketch.api.DownloadRequest
 import com.linroid.ketch.api.DownloadState
 import com.linroid.ketch.api.Segment
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.config.CoreConfig
 import com.linroid.ketch.api.config.QueueConfig
 import com.linroid.ketch.core.KetchDispatchers
 import com.linroid.ketch.core.engine.DownloadCoordinator
@@ -51,7 +51,7 @@ class DownloadQueueBasicTest {
     val coordinator = DownloadCoordinator(
       sourceResolver = SourceResolver(listOf(source)),
       taskStore = InMemoryTaskStore(),
-      config = DownloadConfig(),
+      config = CoreConfig(),
       fileNameResolver = DefaultFileNameResolver(),
       dispatchers = KetchDispatchers(
         main = Dispatchers.Default,

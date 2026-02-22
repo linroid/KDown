@@ -1,6 +1,6 @@
 package com.linroid.ketch.api
 
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.config.CoreConfig
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -53,11 +53,11 @@ interface KetchApi {
    * Updates the runtime download configuration.
    *
    * Changes take effect immediately on all active downloads.
-   * For example, updating [DownloadConfig.speedLimit] adjusts
+   * For example, updating [CoreConfig.speed] adjusts
    * the global speed limit, and updating
-   * [DownloadConfig.queueConfig] adjusts concurrency settings.
+   * [CoreConfig.queue] adjusts concurrency settings.
    */
-  suspend fun updateConfig(config: DownloadConfig)
+  suspend fun updateConfig(config: CoreConfig)
 
   /** Release resources (HTTP client, SSE connection, etc.). */
   fun close()

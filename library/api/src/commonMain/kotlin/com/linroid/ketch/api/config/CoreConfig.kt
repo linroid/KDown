@@ -15,12 +15,12 @@ import kotlinx.serialization.Serializable
  * @property progressUpdateIntervalMs Interval for throttling progress updates to prevent UI spam
  * @property segmentSaveIntervalMs Interval for persisting segment progress during downloads
  * @property bufferSize Size of the download buffer in bytes
- * @property speedLimit Global speed limit applied across all downloads
- * @property queueConfig Configuration for the download queue
- * @property dispatcherConfig Configuration for coroutine dispatchers
+ * @property speed Global speed limit applied across all downloads
+ * @property queue Configuration for the download queue
+ * @property threads Configuration for coroutine dispatchers
  */
 @Serializable
-data class DownloadConfig(
+data class CoreConfig(
   val defaultDirectory: String = "downloads",
   val maxConnections: Int = 4,
   val retryCount: Int = 3,
@@ -28,9 +28,9 @@ data class DownloadConfig(
   val progressUpdateIntervalMs: Long = 200,
   val segmentSaveIntervalMs: Long = 5000,
   val bufferSize: Int = 8192,
-  val speedLimit: SpeedLimit = SpeedLimit.Unlimited,
-  val queueConfig: QueueConfig = QueueConfig(),
-  val dispatcherConfig: DispatcherConfig = DispatcherConfig(),
+  val speed: SpeedLimit = SpeedLimit.Unlimited,
+  val queue: QueueConfig = QueueConfig(),
+  val threads: ThreadsConfig = ThreadsConfig(),
 ) {
   init {
     require(maxConnections > 0) { "maxConnections must be greater than 0" }
@@ -42,6 +42,6 @@ data class DownloadConfig(
   }
 
   companion object {
-    val Default = DownloadConfig()
+    val Default = CoreConfig()
   }
 }

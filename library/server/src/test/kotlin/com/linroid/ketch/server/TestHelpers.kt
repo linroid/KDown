@@ -2,8 +2,7 @@ package com.linroid.ketch.server
 
 import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.api.KetchError
-import com.linroid.ketch.api.config.DownloadConfig
-import com.linroid.ketch.api.config.ServerConfig
+import com.linroid.ketch.api.config.CoreConfig
 import com.linroid.ketch.core.Ketch
 import com.linroid.ketch.core.engine.HttpEngine
 import com.linroid.ketch.core.engine.ServerInfo
@@ -37,14 +36,13 @@ internal class NoOpHttpEngine : HttpEngine {
 }
 
 internal fun createTestKetch(
-  config: DownloadConfig = DownloadConfig.Default,
+  config: CoreConfig = CoreConfig.Default,
 ): KetchApi {
   return Ketch(httpEngine = NoOpHttpEngine(), config = config)
 }
 
 internal fun createTestServer(
-  config: ServerConfig = ServerConfig(),
   ketch: KetchApi = createTestKetch(),
 ): KetchServer {
-  return KetchServer(ketch, config)
+  return KetchServer(ketch)
 }

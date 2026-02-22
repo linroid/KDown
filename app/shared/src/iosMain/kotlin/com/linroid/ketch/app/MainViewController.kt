@@ -3,7 +3,7 @@ package com.linroid.ketch.app
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
-import com.linroid.ketch.app.config.FileConfigStore
+import com.linroid.ketch.config.FileConfigStore
 import com.linroid.ketch.app.instance.InstanceFactory
 import com.linroid.ketch.app.instance.InstanceManager
 import com.linroid.ketch.sqlite.DriverFactory
@@ -34,7 +34,7 @@ fun MainViewController() = ComposeUIViewController {
     InstanceManager(
       factory = InstanceFactory(
         taskStore = taskStore,
-        downloadConfig = downloadConfig,
+        coreConfig = downloadConfig,
         deviceName = instanceName,
       ),
       initialRemotes = config.remote,

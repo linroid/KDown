@@ -5,7 +5,7 @@ import com.linroid.ketch.api.DownloadTask
 import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.api.KetchStatus
 import com.linroid.ketch.api.ResolvedSource
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.config.CoreConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +27,7 @@ class FakeKetchApi(
     private set
   var downloadCallCount = 0
     private set
-  var lastConfig: DownloadConfig? = null
+  var lastConfig: CoreConfig? = null
     private set
 
   override suspend fun download(
@@ -54,7 +54,7 @@ class FakeKetchApi(
     )
   }
 
-  override suspend fun updateConfig(config: DownloadConfig) {
+  override suspend fun updateConfig(config: CoreConfig) {
     lastConfig = config
   }
 

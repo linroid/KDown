@@ -5,9 +5,9 @@ import com.linroid.ketch.api.DownloadTask
 import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.api.KetchStatus
 import com.linroid.ketch.api.ResolvedSource
-import com.linroid.ketch.api.config.DownloadConfig
-import com.linroid.ketch.api.config.RemoteConfig
-import com.linroid.ketch.app.config.ConfigStore
+import com.linroid.ketch.api.config.CoreConfig
+import com.linroid.ketch.config.ConfigStore
+import com.linroid.ketch.config.RemoteConfig
 import com.linroid.ketch.core.Ketch
 import com.linroid.ketch.remote.RemoteKetch
 import kotlinx.coroutines.CoroutineScope
@@ -119,13 +119,13 @@ class InstanceManager(
    * Start the local HTTP server exposing the embedded instance.
    * Only available when [isLocalServerSupported] is `true`.
    */
-  fun startServer(port: Int = 8642, token: String? = null) {
+  fun startServer(port: Int = 8642) {
     val api = embeddedInstance?.instance
       ?: throw UnsupportedOperationException(
         "No embedded instance for local server",
       )
     factory.stopServer()
-    factory.startServer(port, token, api)
+    factory.startServer(api)
     _serverState.value = ServerState.Running(port)
   }
 
@@ -257,7 +257,7 @@ private object DisconnectedApi : KetchApi {
     )
   }
 
-  override suspend fun updateConfig(config: DownloadConfig) {}
+  override suspend fun updateConfig(config: CoreConfig) {}
   override suspend fun start() {}
   override fun close() {}
 }

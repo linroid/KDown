@@ -8,7 +8,7 @@ import com.linroid.ketch.api.KetchError
 import com.linroid.ketch.api.ResolvedSource
 import com.linroid.ketch.api.Segment
 import com.linroid.ketch.api.SpeedLimit
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.config.CoreConfig
 import com.linroid.ketch.api.isDirectory
 import com.linroid.ketch.api.isFile
 import com.linroid.ketch.api.isName
@@ -22,9 +22,7 @@ import com.linroid.ketch.core.task.TaskRecord
 import com.linroid.ketch.core.task.TaskState
 import com.linroid.ketch.core.task.TaskStore
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -41,7 +39,7 @@ import kotlin.time.TimeSource
 internal class DownloadCoordinator(
   private val sourceResolver: SourceResolver,
   private val taskStore: TaskStore,
-  private val config: DownloadConfig,
+  private val config: CoreConfig,
   private val fileNameResolver: FileNameResolver,
   private val globalLimiter: SpeedLimiter = SpeedLimiter.Unlimited,
   private val dispatchers: KetchDispatchers,

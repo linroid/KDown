@@ -1,6 +1,5 @@
-package com.linroid.ketch.app.config
+package com.linroid.ketch.config
 
-import com.linroid.ketch.api.config.KetchConfig
 import kotlinx.browser.window
 
 /**

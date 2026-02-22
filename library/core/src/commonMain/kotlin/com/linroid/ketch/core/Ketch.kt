@@ -9,7 +9,7 @@ import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.api.KetchError
 import com.linroid.ketch.api.KetchStatus
 import com.linroid.ketch.api.ResolvedSource
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.config.CoreConfig
 import com.linroid.ketch.api.log.KetchLogger
 import com.linroid.ketch.api.log.Logger
 import com.linroid.ketch.core.engine.DelegatingSpeedLimiter
@@ -62,26 +62,26 @@ import kotlin.uuid.Uuid
 class Ketch(
   private val httpEngine: HttpEngine,
   private val taskStore: TaskStore = InMemoryTaskStore(),
-  private val config: DownloadConfig = DownloadConfig.Default,
+  private val config: CoreConfig = CoreConfig.Default,
   private val name: String = "Ketch",
   private val fileNameResolver: FileNameResolver = DefaultFileNameResolver(),
   additionalSources: List<DownloadSource> = emptyList(),
   logger: Logger = Logger.None,
   private val dispatchers: KetchDispatchers = KetchDispatchers(
-    config.dispatcherConfig.networkPoolSize,
-    config.dispatcherConfig.ioPoolSize,
+    config.threads.networkPoolSize,
+    config.threads.ioPoolSize,
   ),
 ) : KetchApi {
   private val startMark = TimeSource.Monotonic.markNow()
 
   @Volatile
-  private var currentConfig: DownloadConfig = config
+  private var currentConfig: CoreConfig = config
 
   private val globalLimiter = DelegatingSpeedLimiter(
-    if (config.speedLimit.isUnlimited) {
+    if (config.speed.isUnlimited) {
       SpeedLimiter.Unlimited
     } else {
-      TokenBucket(config.speedLimit.bytesPerSecond)
+      TokenBucket(config.speed.bytesPerSecond)
     },
   )
 
@@ -113,7 +113,7 @@ class Ketch(
   )
 
   private val scheduler = DownloadQueue(
-    queueConfig = config.queueConfig,
+    queueConfig = config.queue,
     coordinator = coordinator,
   )
 
@@ -131,8 +131,8 @@ class Ketch(
   init {
     KetchLogger.setLogger(logger)
     log.i { "Ketch v${KetchApi.VERSION} initialized" }
-    if (!config.speedLimit.isUnlimited) {
-      log.i { "Global speed limit: ${config.speedLimit}" }
+    if (!config.speed.isUnlimited) {
+      log.i { "Global speed limit: ${config.speed}" }
     }
     if (additionalSources.isNotEmpty()) {
       log.i {
@@ -342,11 +342,11 @@ class Ketch(
     }
   }
 
-  override suspend fun updateConfig(config: DownloadConfig) {
+  override suspend fun updateConfig(config: CoreConfig) {
     currentConfig = config
 
     // Apply speed limit
-    val limit = config.speedLimit
+    val limit = config.speed
     val current = globalLimiter.delegate
     if (limit.isUnlimited) {
       globalLimiter.delegate = SpeedLimiter.Unlimited
@@ -357,7 +357,7 @@ class Ketch(
     }
 
     // Apply queue config
-    scheduler.queueConfig = config.queueConfig
+    scheduler.queueConfig = config.queue
 
     log.i { "Config updated: $config" }
   }

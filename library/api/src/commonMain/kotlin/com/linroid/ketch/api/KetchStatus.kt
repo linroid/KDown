@@ -1,6 +1,6 @@
 package com.linroid.ketch.api
 
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.config.CoreConfig
 import kotlinx.serialization.Serializable
 
 /**
@@ -20,7 +20,7 @@ data class KetchStatus(
   val version: String,
   val revision: String,
   val uptime: Long,
-  val config: DownloadConfig,
+  val config: CoreConfig,
   val system: SystemInfo,
 )
 

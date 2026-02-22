@@ -1,5 +1,6 @@
-package com.linroid.ketch.api.config
+package com.linroid.ketch.config
 
+import com.linroid.ketch.api.config.CoreConfig
 import kotlinx.serialization.Serializable
 
 /**
@@ -16,6 +17,6 @@ import kotlinx.serialization.Serializable
 data class KetchConfig(
   val name: String? = null,
   val server: ServerConfig = ServerConfig(),
-  val download: DownloadConfig = DownloadConfig(),
+  val download: CoreConfig = CoreConfig(),
   val remote: List<RemoteConfig> = emptyList(),
 )

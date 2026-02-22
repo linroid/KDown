@@ -1,6 +1,5 @@
 package com.linroid.ketch.server
 
-import com.linroid.ketch.api.config.ServerConfig
 import com.linroid.ketch.server.mdns.MdnsRegistrar
 import java.net.ServerSocket
 import java.util.concurrent.CountDownLatch
@@ -63,14 +62,18 @@ private fun findFreePort(): Int {
 class MdnsRegistrationTest {
 
   private fun createServer(
-    config: ServerConfig,
-    mdnsServiceName: String = "Ketch",
+    port: Int,
+    apiToken: String? = null,
+    mdnsEnabled: Boolean = true,
+    name: String = "Ketch",
     registrar: FakeMdnsRegistrar = FakeMdnsRegistrar(),
   ): Pair<KetchServer, FakeMdnsRegistrar> {
     val server = KetchServer(
       ketch = createTestKetch(),
-      config = config,
-      mdnsServiceName = mdnsServiceName,
+      port = port,
+      apiToken = apiToken,
+      name = name,
+      mdnsEnabled = mdnsEnabled,
       mdnsRegistrar = registrar,
     )
     return server to registrar
@@ -85,10 +88,8 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(
-        port = port,
-        mdnsEnabled = true,
-      ),
+      port = port,
+      mdnsEnabled = true,
       registrar = registrar,
     )
     server.start(wait = false)
@@ -106,10 +107,8 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(
-        port = port,
-        mdnsEnabled = false,
-      ),
+      port = port,
+      mdnsEnabled = false,
       registrar = registrar,
     )
     server.start(wait = false)
@@ -127,15 +126,15 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(port = port),
-      mdnsServiceName = "My Server",
+      port = port,
+      name = "My Server",
       registrar = registrar,
     )
     server.start(wait = false)
     try {
       registrar.awaitRegister()
       assertEquals(
-        ServerConfig.MDNS_SERVICE_TYPE,
+        KetchServer.MDNS_SERVICE_TYPE,
         registrar.lastServiceType,
       )
       assertEquals("My Server", registrar.lastServiceName)
@@ -149,7 +148,7 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(port = port),
+      port = port,
       registrar = registrar,
     )
     server.start(wait = false)
@@ -166,7 +165,8 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(port = port, apiToken = null),
+      port = port,
+      apiToken = null,
       registrar = registrar,
     )
     server.start(wait = false)
@@ -186,7 +186,8 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(port = port, apiToken = ""),
+      port = port,
+      apiToken = "",
       registrar = registrar,
     )
     server.start(wait = false)
@@ -206,10 +207,8 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(
-        port = port,
-        apiToken = "my-secret",
-      ),
+      port = port,
+      apiToken = "my-secret",
       registrar = registrar,
     )
     server.start(wait = false)
@@ -229,7 +228,7 @@ class MdnsRegistrationTest {
     val registrar = FakeMdnsRegistrar()
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(port = port),
+      port = port,
       registrar = registrar,
     )
     server.start(wait = false)
@@ -244,7 +243,7 @@ class MdnsRegistrationTest {
     registrar.failOnRegister = true
     val port = findFreePort()
     val (server, _) = createServer(
-      config = ServerConfig(port = port),
+      port = port,
       registrar = registrar,
     )
     // Should not throw

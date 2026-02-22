@@ -14,13 +14,13 @@ import kotlinx.serialization.Serializable
  *
  * @property networkPoolSize Number of threads (or parallelism level on
  *   platforms without real threads) for the network dispatcher.
- *   Defaults to [DownloadConfig.maxConnections].
+ *   Defaults to [CoreConfig.maxConnections].
  * @property ioPoolSize Number of threads for the I/O dispatcher.
  *   `0` (default) means use the platform default (e.g., `Dispatchers.IO`
  *   on JVM/Android/iOS).
  */
 @Serializable
-data class DispatcherConfig(
+data class ThreadsConfig(
   val networkPoolSize: Int = 8,
   val ioPoolSize: Int = 4,
 ) {
@@ -34,6 +34,6 @@ data class DispatcherConfig(
   }
 
   companion object {
-    val Default = DispatcherConfig()
+    val Default = ThreadsConfig()
   }
 }

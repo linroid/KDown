@@ -122,10 +122,8 @@ fun InstanceSelectorSheet(
               ) {
                 EmbeddedServerControls(
                   serverState = serverState,
-                  onStartServer = { port, token ->
-                    instanceManager.startServer(
-                      port, token
-                    )
+                  onStartServer = { port, _ ->
+                    instanceManager.startServer(port)
                   },
                   onStopServer = {
                     instanceManager.stopServer()

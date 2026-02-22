@@ -1,43 +1,43 @@
 package com.linroid.ketch
 
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.config.CoreConfig
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
-class DownloadConfigTest {
+class CoreConfigTest {
 
   @Test
   fun invalidMaxConnections_throws() {
     assertFailsWith<IllegalArgumentException> {
-      DownloadConfig(maxConnections = 0)
+      CoreConfig(maxConnections = 0)
     }
   }
 
   @Test
   fun negativeRetryCount_throws() {
     assertFailsWith<IllegalArgumentException> {
-      DownloadConfig(retryCount = -1)
+      CoreConfig(retryCount = -1)
     }
   }
 
   @Test
   fun negativeRetryDelay_throws() {
     assertFailsWith<IllegalArgumentException> {
-      DownloadConfig(retryDelayMs = -1)
+      CoreConfig(retryDelayMs = -1)
     }
   }
 
   @Test
   fun zeroProgressInterval_throws() {
     assertFailsWith<IllegalArgumentException> {
-      DownloadConfig(progressUpdateIntervalMs = 0)
+      CoreConfig(progressUpdateIntervalMs = 0)
     }
   }
 
   @Test
   fun zeroBufferSize_throws() {
     assertFailsWith<IllegalArgumentException> {
-      DownloadConfig(bufferSize = 0)
+      CoreConfig(bufferSize = 0)
     }
   }
 }

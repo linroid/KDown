@@ -1,6 +1,5 @@
 package com.linroid.ketch.server
 
-import com.linroid.ketch.api.config.ServerConfig
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
@@ -15,8 +14,9 @@ class AuthTest {
   fun `request without token is rejected when auth is configured`() =
     testApplication {
       application {
-        val server = createTestServer(
-          ServerConfig(apiToken = "secret-token"),
+        val server = KetchServer(
+          ketch = createTestKetch(),
+          apiToken = "secret-token",
         )
         with(server) { configureServer() }
       }
@@ -27,8 +27,9 @@ class AuthTest {
   @Test
   fun `request with valid token succeeds`() = testApplication {
     application {
-      val server = createTestServer(
-        ServerConfig(apiToken = "secret-token"),
+      val server = KetchServer(
+        ketch = createTestKetch(),
+        apiToken = "secret-token",
       )
       with(server) { configureServer() }
     }
@@ -41,8 +42,9 @@ class AuthTest {
   @Test
   fun `request with wrong token is rejected`() = testApplication {
     application {
-      val server = createTestServer(
-        ServerConfig(apiToken = "secret-token"),
+      val server = KetchServer(
+        ketch = createTestKetch(),
+        apiToken = "secret-token",
       )
       with(server) { configureServer() }
     }
@@ -56,8 +58,9 @@ class AuthTest {
   fun `no auth required when apiToken is null`() =
     testApplication {
       application {
-        val server = createTestServer(
-          ServerConfig(apiToken = null),
+        val server = KetchServer(
+          ketch = createTestKetch(),
+          apiToken = null,
         )
         with(server) { configureServer() }
       }

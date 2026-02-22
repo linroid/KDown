@@ -20,6 +20,7 @@ kotlinx-serialization = "1.10.0"
 kotlinx-io = "0.9.0"
 kotlinx-datetime = "0.7.1"
 kermit = "2.0.8"
+kotlinx-browser = "0.5.0"
 ktoml = "0.7.1"
 ktor = "3.4.0"
 sqldelight = "2.2.1"
@@ -50,6 +51,7 @@ compose-material3-adaptive-navigationSuite = { module = "org.jetbrains.compose.m
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+kotlinx-browser = { module = "org.jetbrains.kotlinx:kotlinx-browser", version.ref = "kotlinx-browser" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }

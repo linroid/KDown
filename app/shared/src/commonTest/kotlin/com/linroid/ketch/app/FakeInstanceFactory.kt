@@ -1,7 +1,7 @@
 package com.linroid.ketch.app
 
 import com.linroid.ketch.api.KetchApi
-import com.linroid.ketch.api.config.RemoteConfig
+import com.linroid.ketch.config.RemoteConfig
 import com.linroid.ketch.app.instance.EmbeddedInstance
 import com.linroid.ketch.app.instance.RemoteInstance
 import com.linroid.ketch.core.Ketch
