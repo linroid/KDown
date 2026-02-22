@@ -1,12 +1,11 @@
-package com.linroid.ketch.server
+package com.linroid.ketch.config
 
-import com.linroid.ketch.api.config.ServerConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
-class KetchServerConfigTest {
+class ServerConfigTest {
 
   @Test
   fun `default config has expected values`() {

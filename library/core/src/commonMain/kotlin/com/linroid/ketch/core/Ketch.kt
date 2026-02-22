@@ -9,7 +9,7 @@ import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.api.KetchError
 import com.linroid.ketch.api.KetchStatus
 import com.linroid.ketch.api.ResolvedSource
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.DownloadConfig
 import com.linroid.ketch.api.log.KetchLogger
 import com.linroid.ketch.api.log.Logger
 import com.linroid.ketch.core.engine.DelegatingSpeedLimiter
@@ -68,8 +68,8 @@ class Ketch(
   additionalSources: List<DownloadSource> = emptyList(),
   logger: Logger = Logger.None,
   private val dispatchers: KetchDispatchers = KetchDispatchers(
-    config.dispatcherConfig.networkPoolSize,
-    config.dispatcherConfig.ioPoolSize,
+    networkThreads = config.maxConnectionsPerDownload,
+    ioThreads = maxOf(config.maxConnectionsPerDownload / 2, 2),
   ),
 ) : KetchApi {
   private val startMark = TimeSource.Monotonic.markNow()
@@ -87,9 +87,9 @@ class Ketch(
 
   private val httpSource = HttpDownloadSource(
     httpEngine = httpEngine,
-    maxConnections = config.maxConnections,
-    progressUpdateIntervalMs = config.progressUpdateIntervalMs,
-    segmentSaveIntervalMs = config.segmentSaveIntervalMs,
+    maxConnections = config.maxConnectionsPerDownload,
+    progressIntervalMs = config.progressIntervalMs,
+    saveIntervalMs = config.saveIntervalMs,
   )
 
   private val sourceResolver = SourceResolver(
@@ -113,7 +113,8 @@ class Ketch(
   )
 
   private val scheduler = DownloadQueue(
-    queueConfig = config.queueConfig,
+    maxConcurrentDownloads = config.maxConcurrentDownloads,
+    maxConnectionsPerHost = config.maxConnectionsPerHost,
     coordinator = coordinator,
   )
 
@@ -135,10 +136,7 @@ class Ketch(
       log.i { "Global speed limit: ${config.speedLimit}" }
     }
     if (additionalSources.isNotEmpty()) {
-      log.i {
-        "Additional sources: " +
-          additionalSources.joinToString { it.type }
-      }
+      log.i { "Additional sources: ${additionalSources.joinToString { it.type }}" }
     }
   }
 
@@ -198,7 +196,7 @@ class Ketch(
       revision = KetchApi.REVISION,
       uptime = startMark.elapsedNow().inWholeSeconds,
       config = currentConfig,
-      system = currentSystemInfo(config.defaultDirectory),
+      system = currentSystemInfo(config.defaultDirectory ?: "downloads"),
     )
   }
 
@@ -357,7 +355,8 @@ class Ketch(
     }
 
     // Apply queue config
-    scheduler.queueConfig = config.queueConfig
+    scheduler.maxConcurrent = config.maxConcurrentDownloads
+    scheduler.maxPerHost = config.maxConnectionsPerHost
 
     log.i { "Config updated: $config" }
   }

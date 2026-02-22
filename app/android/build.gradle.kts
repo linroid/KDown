@@ -79,6 +79,7 @@ android {
 }
 
 dependencies {
+  implementation(projects.config)
   implementation(projects.app.shared)
   implementation(projects.library.core)
   implementation(projects.library.sqlite)

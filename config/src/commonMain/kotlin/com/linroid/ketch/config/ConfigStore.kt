@@ -1,10 +1,9 @@
-package com.linroid.ketch.app.config
+package com.linroid.ketch.config
 
 import com.akuleshov7.ktoml.Toml
 import com.akuleshov7.ktoml.TomlIndentation
 import com.akuleshov7.ktoml.TomlInputConfig
 import com.akuleshov7.ktoml.TomlOutputConfig
-import com.linroid.ketch.api.config.KetchConfig
 
 /**
  * Reads and writes [KetchConfig] for the app.

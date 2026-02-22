@@ -6,11 +6,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.linroid.ketch.app.App
-import com.linroid.ketch.app.config.FileConfigStore
 import com.linroid.ketch.app.instance.InstanceFactory
 import com.linroid.ketch.app.instance.InstanceManager
 import com.linroid.ketch.app.instance.LocalServerHandle
-import com.linroid.ketch.api.config.ServerConfig
+import com.linroid.ketch.config.FileConfigStore
+import com.linroid.ketch.config.defaultConfigDir
 import com.linroid.ketch.server.KetchServer
 import com.linroid.ketch.sqlite.DriverFactory
 import com.linroid.ketch.sqlite.createSqliteTaskStore
@@ -19,7 +19,7 @@ import java.net.InetAddress
 
 fun main() = application {
   val instanceManager = remember {
-    val configDir = appConfigDir()
+    val configDir = defaultConfigDir()
     val configStore = FileConfigStore(
       configDir + File.separator + "config.toml",
     )
@@ -30,25 +30,26 @@ fun main() = application {
       File.separator + "Downloads"
     val downloadConfig = config.download.copy(
       defaultDirectory = config.download.defaultDirectory
-        .takeIf { it != "downloads" }
         ?: defaultDownloadsDir,
     )
-    val instanceName = config.name
-      ?: InetAddress.getLocalHost().hostName
+    val instanceName = config.name?.ifEmpty { null }
+      ?: InetAddress.getLocalHost().hostName.removeSuffix(".local")
     InstanceManager(
       factory = InstanceFactory(
         taskStore = taskStore,
         downloadConfig = downloadConfig,
         deviceName = instanceName,
-        localServerFactory = { port, apiToken, ketchApi ->
+        localServerFactory = { ketchApi ->
+          val serverConfig = config.server
           val server = KetchServer(
-            ketchApi,
-            ServerConfig(
-              port = port,
-              apiToken = apiToken,
-              corsAllowedHosts = listOf("*"),
-            ),
-            mdnsServiceName = instanceName,
+            ketch = ketchApi,
+            host = serverConfig.host,
+            port = serverConfig.port,
+            apiToken = serverConfig.apiToken,
+            name = instanceName,
+            corsAllowedHosts = serverConfig.corsAllowedHosts
+              .takeIf { it.isNotEmpty() } ?: listOf("*"),
+            mdnsEnabled = serverConfig.mdnsEnabled,
           )
           server.start(wait = false)
           object : LocalServerHandle {
@@ -56,9 +57,9 @@ fun main() = application {
               server.stop()
             }
           }
-        }
+        },
       ),
-      initialRemotes = config.remote,
+      initialRemotes = config.remotes,
       configStore = configStore,
     )
   }
@@ -71,25 +72,5 @@ fun main() = application {
     icon = painterResource("icon.svg"),
   ) {
     App(instanceManager)
-  }
-}
-
-private fun appConfigDir(): String {
-  val os = System.getProperty("os.name", "").lowercase()
-  val home = System.getProperty("user.home")
-  return when {
-    os.contains("mac") ->
-      "$home${File.separator}Library${File.separator}" +
-        "Application Support${File.separator}ketch"
-    os.contains("win") -> {
-      val appData = System.getenv("APPDATA")
-        ?: "$home${File.separator}AppData${File.separator}Roaming"
-      "$appData${File.separator}ketch"
-    }
-    else -> {
-      val xdg = System.getenv("XDG_CONFIG_HOME")
-        ?: "$home${File.separator}.config"
-      "$xdg${File.separator}ketch"
-    }
   }
 }

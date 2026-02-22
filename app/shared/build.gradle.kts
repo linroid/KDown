@@ -6,6 +6,7 @@ plugins {
   alias(libs.plugins.androidKmpLibrary)
   alias(libs.plugins.composeMultiplatform)
   alias(libs.plugins.composeCompiler)
+  alias(libs.plugins.kotlinx.serialization)
 }
 
 kotlin {
@@ -38,12 +39,11 @@ kotlin {
 
   sourceSets {
     commonMain.dependencies {
+      implementation(projects.config)
       implementation(projects.library.core)
       implementation(projects.library.remote)
       implementation(projects.library.ktor)
       implementation(libs.kotlinx.coroutines.core)
-      implementation(libs.kotlinx.io.core)
-      implementation(libs.ktoml.core)
       implementation(libs.compose.runtime)
       implementation(libs.compose.foundation)
       implementation(libs.compose.material3)

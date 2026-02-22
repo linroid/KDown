@@ -1,5 +1,6 @@
-package com.linroid.ketch.api.config
+package com.linroid.ketch.config
 
+import com.linroid.ketch.api.DownloadConfig
 import kotlinx.serialization.Serializable
 
 /**
@@ -10,12 +11,12 @@ import kotlinx.serialization.Serializable
  *   (e.g. device model on Android, hostname on desktop).
  * @property server server-mode settings (host, port, auth).
  * @property download download engine settings.
- * @property remote pre-configured remote server connections.
+ * @property remotes pre-configured remote server connections.
  */
 @Serializable
 data class KetchConfig(
   val name: String? = null,
   val server: ServerConfig = ServerConfig(),
   val download: DownloadConfig = DownloadConfig(),
-  val remote: List<RemoteConfig> = emptyList(),
+  val remotes: List<RemoteConfig> = emptyList(),
 )

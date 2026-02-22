@@ -7,12 +7,15 @@ import com.linroid.ketch.api.DownloadRequest
 import com.linroid.ketch.api.DownloadState
 import com.linroid.ketch.api.KetchApi
 import com.linroid.ketch.api.SpeedLimit
-import com.linroid.ketch.api.config.DownloadConfig
-import com.linroid.ketch.api.config.KetchConfig
-import com.linroid.ketch.api.config.QueueConfig
-import com.linroid.ketch.core.Ketch
+import com.linroid.ketch.api.DownloadConfig
 import com.linroid.ketch.api.log.LogLevel
 import com.linroid.ketch.api.log.Logger
+import com.linroid.ketch.config.FileConfigStore
+import com.linroid.ketch.config.KetchConfig
+import com.linroid.ketch.config.defaultConfigPath
+import com.linroid.ketch.config.defaultDbPath
+import com.linroid.ketch.config.generateConfig
+import com.linroid.ketch.core.Ketch
 import com.linroid.ketch.engine.KtorHttpEngine
 import com.linroid.ketch.server.KetchServer
 import com.linroid.ketch.sqlite.DriverFactory
@@ -136,13 +139,11 @@ fun main(args: Array<String>) {
   println()
 
   val config = DownloadConfig(
-    maxConnections = 4,
+    maxConnectionsPerDownload = 4,
     retryCount = 3,
     retryDelayMs = 1000,
-    progressUpdateIntervalMs = 200,
-    queueConfig = QueueConfig(
-      maxConcurrentDownloads = maxConcurrent,
-    )
+    progressIntervalMs = 200,
+    maxConcurrentDownloads = maxConcurrent,
   )
 
   val ketch = Ketch(
@@ -357,7 +358,7 @@ private fun runServer(args: Array<String>) {
   // or empty defaults
   val fileConfig = if (configPath != null) {
     try {
-      loadConfig(configPath)
+      FileConfigStore(configPath).load()
     } catch (e: Exception) {
       System.err.println("Error loading config: ${e.message}")
       return
@@ -367,7 +368,7 @@ private fun runServer(args: Array<String>) {
     if (File(defaultPath).exists()) {
       try {
         println("Loading config from $defaultPath")
-        loadConfig(defaultPath)
+        FileConfigStore(defaultPath).load()
       } catch (e: Exception) {
         System.err.println(
           "Error loading config from $defaultPath: ${e.message}"
@@ -393,7 +394,6 @@ private fun runServer(args: Array<String>) {
     download = fileConfig.download.copy(
       defaultDirectory = cliDownloadDir
         ?: fileConfig.download.defaultDirectory
-          .takeIf { it != "downloads" }
         ?: defaultDownloadDir,
       speedLimit = cliSpeedLimit
         ?: fileConfig.download.speedLimit,
@@ -418,8 +418,13 @@ private fun runServer(args: Array<String>) {
     logger = Logger.console(ketchLogLevel),
   )
   val server = KetchServer(
-    ketch, serverConfig,
-    mdnsServiceName = instanceName,
+    ketch,
+    host = serverConfig.host,
+    port = serverConfig.port,
+    apiToken = serverConfig.apiToken,
+    name = instanceName,
+    corsAllowedHosts = serverConfig.corsAllowedHosts,
+    mdnsEnabled = serverConfig.mdnsEnabled,
   )
 
   Runtime.getRuntime().addShutdownHook(Thread {
@@ -514,29 +519,6 @@ private fun printServerUsage() {
   println("  ketch server --speed-limit 10m")
   println("  ketch server --config /path/to/config.toml")
   println("  ketch server --generate-config")
-}
-
-private fun defaultDbPath(): String {
-  val os = System.getProperty("os.name", "").lowercase()
-  val home = System.getProperty("user.home")
-  val configDir = when {
-    os.contains("mac") ->
-      "$home${File.separator}Library${File.separator}" +
-        "Application Support${File.separator}ketch"
-    os.contains("win") -> {
-      val appData = System.getenv("APPDATA")
-        ?: "$home${File.separator}AppData${File.separator}Roaming"
-      "$appData${File.separator}ketch"
-    }
-    else -> {
-      val xdg = System.getenv("XDG_CONFIG_HOME")
-        ?: "$home${File.separator}.config"
-      "$xdg${File.separator}ketch"
-    }
-  }
-  val dir = File(configDir)
-  dir.mkdirs()
-  return File(dir, "ketch.db").absolutePath
 }
 
 private fun parsePriority(value: String): DownloadPriority? {

@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 rootProject.name = "Ketch"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
@@ -41,6 +43,9 @@ include(":library:ktor")
 include(":library:kermit")
 include(":library:sqlite")
 include(":library:server")
+
+// Config module
+include(":config")
 
 // App modules
 include(":app:shared")

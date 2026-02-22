@@ -12,14 +12,13 @@ import android.os.Environment
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.linroid.ketch.app.config.FileConfigStore
+import com.linroid.ketch.api.log.KetchLogger
 import com.linroid.ketch.app.instance.InstanceFactory
 import com.linroid.ketch.app.instance.InstanceManager
 import com.linroid.ketch.app.instance.LocalServerHandle
 import com.linroid.ketch.app.instance.ServerState
-import com.linroid.ketch.api.log.KetchLogger
+import com.linroid.ketch.config.FileConfigStore
 import com.linroid.ketch.server.KetchServer
-import com.linroid.ketch.api.config.ServerConfig
 import com.linroid.ketch.sqlite.DriverFactory
 import com.linroid.ketch.sqlite.createSqliteTaskStore
 import kotlinx.coroutines.CoroutineScope
@@ -74,7 +73,6 @@ class KetchService : Service() {
       .absolutePath
     val downloadConfig = config.download.copy(
       defaultDirectory = config.download.defaultDirectory
-        .takeIf { it != "downloads" }
         ?: downloadsDir,
     )
     val instanceName = config.name
@@ -84,19 +82,21 @@ class KetchService : Service() {
         taskStore = taskStore,
         downloadConfig = downloadConfig,
         deviceName = instanceName,
-        localServerFactory = { port, apiToken, ketchApi ->
-          log.i { "Starting local server on port $port" }
+        localServerFactory = { ketchApi ->
+          val serverConfig = config.server
+          log.i { "Starting local server on port ${serverConfig.port}" }
           val server = KetchServer(
             ketchApi,
-            ServerConfig(
-              port = port,
-              apiToken = apiToken,
-              corsAllowedHosts = listOf("*"),
-            ),
-            mdnsServiceName = instanceName,
+            host = serverConfig.host,
+            port = serverConfig.port,
+            apiToken = serverConfig.apiToken,
+            name = instanceName,
+            corsAllowedHosts = serverConfig.corsAllowedHosts
+              .takeIf { it.isNotEmpty() } ?: listOf("*"),
+            mdnsEnabled = serverConfig.mdnsEnabled,
           )
           server.start(wait = false)
-          log.i { "Local server started on port $port" }
+          log.i { "Local server started on port ${serverConfig.port}" }
           object : LocalServerHandle {
             override fun stop() {
               log.i { "Stopping local server" }
@@ -106,7 +106,7 @@ class KetchService : Service() {
           }
         },
       ),
-      initialRemotes = config.remote,
+      initialRemotes = config.remotes,
       configStore = configStore,
     )
     startForegroundMonitor()

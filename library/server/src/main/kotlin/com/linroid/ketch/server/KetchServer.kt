@@ -1,7 +1,6 @@
 package com.linroid.ketch.server
 
 import com.linroid.ketch.api.KetchApi
-import com.linroid.ketch.api.config.ServerConfig
 import com.linroid.ketch.api.log.KetchLogger
 import com.linroid.ketch.endpoints.model.ErrorResponse
 import com.linroid.ketch.server.api.downloadRoutes
@@ -81,21 +80,24 @@ import kotlin.coroutines.cancellation.CancellationException
  * - `GET /api/events/{id}`  — SSE stream for a specific task
  *
  * @param ketch the KetchApi instance to expose
- * @param config server configuration (host, port, auth, CORS)
  * @param mdnsRegistrar mDNS service registrar for LAN discovery
  */
 class KetchServer(
   private val ketch: KetchApi,
-  private val config: ServerConfig = ServerConfig(),
-  private val mdnsServiceName: String = "Ketch",
+  private val host: String = "0.0.0.0",
+  private val port: Int = 8642,
+  private val apiToken: String? = null,
+  private val name: String = "Ketch",
+  private val corsAllowedHosts: List<String> = emptyList(),
+  private val mdnsEnabled: Boolean = true,
   private val mdnsRegistrar: MdnsRegistrar = defaultMdnsRegistrar(),
 ) {
   private val log = KetchLogger("KetchServer")
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
   private var engine: EmbeddedServer<CIOApplicationEngine, *> = embeddedServer(
     CIO,
-    host = config.host,
-    port = config.port,
+    host = host,
+    port = port,
     module = { configureServer() },
   )
 
@@ -107,7 +109,7 @@ class KetchServer(
    */
   fun start(wait: Boolean = true) {
     check(scope.isActive) { "Server has been stopped" }
-    log.i { "Starting server on ${config.host}:${config.port}" }
+    log.i { "Starting server on ${host}:${port}" }
     engine.start(wait = wait)
     startMdnsRegistration()
   }
@@ -123,26 +125,26 @@ class KetchServer(
   }
 
   private fun startMdnsRegistration() {
-    if (!config.mdnsEnabled) return
+    if (!mdnsEnabled) return
     scope.launch {
       val tokenValue =
-        if (config.apiToken.isNullOrBlank()) "none"
+        if (apiToken.isNullOrBlank()) "none"
         else "required"
       log.d {
         "Registering mDNS service:" +
-          " name=$mdnsServiceName," +
-          " type=${ServerConfig.MDNS_SERVICE_TYPE}," +
-          " port=${config.port}," +
+          " name=$name," +
+          " type=${MDNS_SERVICE_TYPE}," +
+          " port=${port}," +
           " token=$tokenValue"
       }
       try {
         mdnsRegistrar.register(
-          serviceType = ServerConfig.MDNS_SERVICE_TYPE,
-          serviceName = mdnsServiceName,
-          port = config.port,
+          serviceType = MDNS_SERVICE_TYPE,
+          serviceName = name,
+          port = port,
           metadata = mapOf("token" to tokenValue),
         )
-        log.i { "mDNS registered: $mdnsServiceName (${ServerConfig.MDNS_SERVICE_TYPE})" }
+        log.i { "mDNS registered: $name (${MDNS_SERVICE_TYPE})" }
         awaitCancellation()
       } catch (e: CancellationException) {
         throw e
@@ -172,12 +174,12 @@ class KetchServer(
 
     install(SSE)
 
-    if (config.corsAllowedHosts.isNotEmpty()) {
+    if (corsAllowedHosts.isNotEmpty()) {
       install(CORS) {
-        if ("*" in config.corsAllowedHosts) {
+        if ("*" in corsAllowedHosts) {
           anyHost()
         } else {
-          config.corsAllowedHosts.forEach { host ->
+          corsAllowedHosts.forEach { host ->
             allowHost(host)
           }
         }
@@ -219,7 +221,7 @@ class KetchServer(
       }
     }
 
-    config.apiToken?.let { expectedToken ->
+    apiToken?.let { expectedToken ->
       install(Authentication) {
         bearer(AUTH_API) {
           authenticate { credential ->
@@ -234,7 +236,7 @@ class KetchServer(
     }
 
     routing {
-      if (config.apiToken != null) {
+      if (apiToken != null) {
         authenticate(AUTH_API) {
           apiRoutes(ketch)
         }
@@ -247,6 +249,9 @@ class KetchServer(
 
   companion object {
     private const val AUTH_API = "api-bearer"
+
+    /** DNS-SD service type for Ketch server discovery. */
+    internal const val MDNS_SERVICE_TYPE = "_ketch._tcp"
   }
 }
 

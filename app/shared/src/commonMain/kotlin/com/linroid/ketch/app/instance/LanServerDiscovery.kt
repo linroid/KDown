@@ -1,6 +1,6 @@
 package com.linroid.ketch.app.instance
 
-import com.linroid.ketch.api.config.ServerConfig
+import com.linroid.ketch.config.ServerConfig
 
 data class DiscoveredServer(
   val name: String,

@@ -3,7 +3,7 @@ package com.linroid.ketch.app
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
-import com.linroid.ketch.app.config.FileConfigStore
+import com.linroid.ketch.config.FileConfigStore
 import com.linroid.ketch.app.instance.InstanceFactory
 import com.linroid.ketch.app.instance.InstanceManager
 import com.linroid.ketch.sqlite.DriverFactory
@@ -23,11 +23,9 @@ fun MainViewController() = ComposeUIViewController {
     val configStore = FileConfigStore("$docsDir/config.toml")
     val config = configStore.load()
     val taskStore = createSqliteTaskStore(DriverFactory())
-    val downloadsDir = docsDir
     val downloadConfig = config.download.copy(
       defaultDirectory = config.download.defaultDirectory
-        .takeIf { it != "downloads" }
-        ?: downloadsDir,
+        ?: docsDir,
     )
     val instanceName = config.name
       ?: UIDevice.currentDevice.name
@@ -37,7 +35,7 @@ fun MainViewController() = ComposeUIViewController {
         downloadConfig = downloadConfig,
         deviceName = instanceName,
       ),
-      initialRemotes = config.remote,
+      initialRemotes = config.remotes,
       configStore = configStore,
     )
   }

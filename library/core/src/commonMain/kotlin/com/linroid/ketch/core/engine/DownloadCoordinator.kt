@@ -8,7 +8,7 @@ import com.linroid.ketch.api.KetchError
 import com.linroid.ketch.api.ResolvedSource
 import com.linroid.ketch.api.Segment
 import com.linroid.ketch.api.SpeedLimit
-import com.linroid.ketch.api.config.DownloadConfig
+import com.linroid.ketch.api.DownloadConfig
 import com.linroid.ketch.api.isDirectory
 import com.linroid.ketch.api.isFile
 import com.linroid.ketch.api.isName
@@ -22,9 +22,7 @@ import com.linroid.ketch.core.task.TaskRecord
 import com.linroid.ketch.core.task.TaskState
 import com.linroid.ketch.core.task.TaskStore
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -203,7 +201,7 @@ internal class DownloadCoordinator(
       )
     val outputPath = resolveDestPath(
       destination = request.destination,
-      defaultDir = config.defaultDirectory,
+      defaultDir = config.defaultDirectory ?: "downloads",
       serverFileName = fileName,
       deduplicate = true,
     )
@@ -639,7 +637,7 @@ internal class DownloadCoordinator(
         context.maxConnections.value
 
       context.request.connections > 0 -> context.request.connections
-      else -> config.maxConnections
+      else -> config.maxConnectionsPerDownload
     }
     val reduced = if (rateLimitRemaining != null &&
       rateLimitRemaining < current

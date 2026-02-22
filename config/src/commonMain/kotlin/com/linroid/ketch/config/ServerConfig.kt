@@ -1,4 +1,4 @@
-package com.linroid.ketch.api.config
+package com.linroid.ketch.config
 
 import kotlinx.serialization.Serializable
 
