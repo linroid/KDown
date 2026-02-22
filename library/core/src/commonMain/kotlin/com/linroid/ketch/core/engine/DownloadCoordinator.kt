@@ -12,11 +12,11 @@ import com.linroid.ketch.api.config.DownloadConfig
 import com.linroid.ketch.api.isDirectory
 import com.linroid.ketch.api.isFile
 import com.linroid.ketch.api.isName
+import com.linroid.ketch.api.log.KetchLogger
 import com.linroid.ketch.core.file.FileAccessor
 import com.linroid.ketch.core.file.FileNameResolver
 import com.linroid.ketch.core.file.createFileAccessor
 import com.linroid.ketch.core.file.resolveChildPath
-import com.linroid.ketch.api.log.KetchLogger
 import com.linroid.ketch.core.task.TaskRecord
 import com.linroid.ketch.core.task.TaskState
 import com.linroid.ketch.core.task.TaskStore
@@ -41,9 +41,11 @@ internal class DownloadCoordinator(
   private val config: DownloadConfig,
   private val fileNameResolver: FileNameResolver,
   private val globalLimiter: SpeedLimiter = SpeedLimiter.Unlimited,
+  private val scope: CoroutineScope,
 ) {
   private val log = KetchLogger("Coordinator")
   private val mutex = Mutex()
+  private val recordMutex = Mutex()
   private val activeDownloads = mutableMapOf<String, ActiveDownload>()
 
   private class ActiveDownload(
@@ -60,21 +62,13 @@ internal class DownloadCoordinator(
   suspend fun start(
     taskId: String,
     request: DownloadRequest,
-    scope: CoroutineScope,
     stateFlow: MutableStateFlow<DownloadState>,
     segmentsFlow: MutableStateFlow<List<Segment>>,
   ) {
     log.i { "Starting download: taskId=$taskId, url=${request.url}" }
-    val now = Clock.System.now()
-    taskStore.save(
-      TaskRecord(
-        taskId = taskId,
-        request = request,
-        state = TaskState.PENDING,
-        createdAt = now,
-        updatedAt = now,
-      )
-    )
+    updateTaskRecord(taskId) {
+      it.copy(state = TaskState.QUEUED, updatedAt = Clock.System.now())
+    }
 
     mutex.withLock {
       if (activeDownloads.containsKey(taskId)) {
@@ -115,23 +109,23 @@ internal class DownloadCoordinator(
   }
 
   suspend fun startFromRecord(
-    record: TaskRecord,
-    scope: CoroutineScope,
+    taskId: String,
+    request: DownloadRequest,
     stateFlow: MutableStateFlow<DownloadState>,
     segmentsFlow: MutableStateFlow<List<Segment>>,
   ) {
-    log.i { "Starting from record: taskId=${record.taskId}" }
-    updateTaskRecord(record.taskId) {
+    log.i { "Starting from record: taskId=$taskId" }
+    updateTaskRecord(taskId) {
       it.copy(
-        state = TaskState.PENDING,
+        state = TaskState.QUEUED,
         updatedAt = Clock.System.now(),
       )
     }
 
     mutex.withLock {
-      if (activeDownloads.containsKey(record.taskId)) {
+      if (activeDownloads.containsKey(taskId)) {
         log.d {
-          "Download already active for taskId=${record.taskId}, " +
+          "Download already active for taskId=$taskId, " +
             "skipping startFromRecord"
         }
         return
@@ -140,7 +134,7 @@ internal class DownloadCoordinator(
       val job = scope.launch {
         try {
           executeDownload(
-            record.taskId, record.request, stateFlow, segmentsFlow
+            taskId, request, stateFlow, segmentsFlow,
           )
         } catch (e: CancellationException) {
           val s = stateFlow.value
@@ -157,13 +151,13 @@ internal class DownloadCoordinator(
             else -> KetchError.Unknown(e)
           }
           updateTaskState(
-            record.taskId, TaskState.FAILED, error.message
+            taskId, TaskState.FAILED, error.message,
           )
           stateFlow.value = DownloadState.Failed(error)
         }
       }
 
-      activeDownloads[record.taskId] = ActiveDownload(
+      activeDownloads[taskId] = ActiveDownload(
         job = job,
         stateFlow = stateFlow,
         segmentsFlow = segmentsFlow,
@@ -211,6 +205,39 @@ internal class DownloadCoordinator(
     )
     log.d { "Resolved outputPath=$outputPath" }
 
+    if (totalBytes == 0L) {
+      log.i { "Zero-byte file for taskId=$taskId, completing" }
+      val fileAccessor = createFileAccessor(outputPath)
+      try {
+        fileAccessor.flush()
+      } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        throw KetchError.Disk(e)
+      } finally {
+        try {
+          fileAccessor.close()
+        } catch (e: Exception) {
+          log.w(e) { "Failed to close file for taskId=$taskId" }
+        }
+      }
+      updateTaskRecord(taskId) {
+        it.copy(
+          outputPath = outputPath,
+          state = TaskState.COMPLETED,
+          totalBytes = 0,
+          downloadedBytes = 0,
+          segments = null,
+          sourceType = source.type,
+          updatedAt = Clock.System.now(),
+        )
+      }
+      stateFlow.value = DownloadState.Completed(outputPath)
+      withContext(NonCancellable) {
+        mutex.withLock { activeDownloads.remove(taskId) }
+      }
+      return
+    }
+
     val now = Clock.System.now()
     updateTaskRecord(taskId) {
       it.copy(
@@ -220,7 +247,7 @@ internal class DownloadCoordinator(
         acceptRanges = resolvedUrl.supportsResume,
         etag = resolvedUrl.metadata[HttpDownloadSource.META_ETAG],
         lastModified = resolvedUrl.metadata[
-          HttpDownloadSource.META_LAST_MODIFIED
+          HttpDownloadSource.META_LAST_MODIFIED,
         ],
         sourceType = source.type,
         updatedAt = now,
@@ -236,10 +263,11 @@ internal class DownloadCoordinator(
         it.taskLimiter.delegate = createLimiter(request.speedLimit)
         it.taskLimiter
       } ?: throw KetchError.Unknown(
-        IllegalStateException("ActiveDownload not found for $taskId")
+        IllegalStateException("ActiveDownload not found for $taskId"),
       )
     }
 
+    var completed = false
     try {
       val context = buildContext(
         taskId, request.url, request, fileAccessor,
@@ -275,12 +303,30 @@ internal class DownloadCoordinator(
         )
       }
 
+      completed = true
       log.i { "Download completed successfully for taskId=$taskId" }
       stateFlow.value =
         DownloadState.Completed(outputPath)
     } finally {
-      fileAccessor.close()
+      try {
+        fileAccessor.close()
+      } catch (e: Exception) {
+        log.w(e) { "Failed to close file for taskId=$taskId" }
+      }
       withContext(NonCancellable) {
+        if (!completed && stateFlow.value !is DownloadState.Paused &&
+          stateFlow.value !is DownloadState.Queued &&
+          stateFlow.value !is DownloadState.Canceled
+        ) {
+          try {
+            fileAccessor.delete()
+            log.d { "Deleted partial file for failed taskId=$taskId" }
+          } catch (e: Exception) {
+            log.w(e) {
+              "Failed to delete partial file for taskId=$taskId"
+            }
+          }
+        }
         mutex.withLock {
           activeDownloads.remove(taskId)
         }
@@ -306,7 +352,7 @@ internal class DownloadCoordinator(
       // Set Paused BEFORE cancelling the job so the
       // CancellationException handler won't set Canceled.
       active.stateFlow.value = DownloadState.Paused(
-        DownloadProgress(pausedDownloaded, active.totalBytes)
+        DownloadProgress(pausedDownloaded, active.totalBytes),
       )
 
       active.job.cancel()
@@ -341,7 +387,6 @@ internal class DownloadCoordinator(
 
   suspend fun resume(
     taskId: String,
-    scope: CoroutineScope,
     stateFlow: MutableStateFlow<DownloadState>,
     segmentsFlow: MutableStateFlow<List<Segment>>,
     destination: Destination? = null,
@@ -365,7 +410,7 @@ internal class DownloadCoordinator(
         "${taskRecord.totalBytes}"
     }
 
-    stateFlow.value = DownloadState.Pending
+    stateFlow.value = DownloadState.Queued
     segmentsFlow.value = segments
 
     updateTaskRecord(taskId) {
@@ -380,7 +425,7 @@ internal class DownloadCoordinator(
       val job = scope.launch {
         try {
           resumeDownload(
-            taskId, taskRecord, segments, stateFlow, segmentsFlow
+            taskId, taskRecord, segments, stateFlow, segmentsFlow,
           )
         } catch (e: CancellationException) {
           val s = stateFlow.value
@@ -430,8 +475,8 @@ internal class DownloadCoordinator(
     val outputPath = taskRecord.outputPath
       ?: throw KetchError.Unknown(
         IllegalStateException(
-          "No outputPath for taskId=${taskRecord.taskId}"
-        )
+          "No outputPath for taskId=${taskRecord.taskId}",
+        ),
       )
     val fileAccessor = createFileAccessor(outputPath)
 
@@ -444,7 +489,7 @@ internal class DownloadCoordinator(
           createLimiter(taskRecord.request.speedLimit)
         it.taskLimiter
       } ?: throw KetchError.Unknown(
-        IllegalStateException("ActiveDownload not found for $taskId")
+        IllegalStateException("ActiveDownload not found for $taskId"),
       )
     }
 
@@ -458,12 +503,13 @@ internal class DownloadCoordinator(
     val context = buildContext(
       taskId, taskRecord.request.url, taskRecord.request,
       fileAccessor, segmentsFlow, stateFlow, taskLimiter,
-      taskRecord.totalBytes, taskRecord.request.headers
+      taskRecord.totalBytes, taskRecord.request.headers,
     )
     mutex.withLock {
       activeDownloads[taskId]?.context = context
     }
 
+    var completed = false
     try {
       downloadWithRetry(taskId, context) {
         source.resume(context, resumeState)
@@ -486,12 +532,28 @@ internal class DownloadCoordinator(
         )
       }
 
+      completed = true
       log.i { "Resume completed successfully for taskId=$taskId" }
       stateFlow.value =
         DownloadState.Completed(outputPath)
     } finally {
-      fileAccessor.close()
+      try {
+        fileAccessor.close()
+      } catch (e: Exception) {
+        log.w(e) { "Failed to close file for taskId=$taskId" }
+      }
       withContext(NonCancellable) {
+        if (!completed && stateFlow.value !is DownloadState.Paused &&
+          stateFlow.value !is DownloadState.Queued &&
+          stateFlow.value !is DownloadState.Canceled
+        ) {
+          try {
+            fileAccessor.delete()
+            log.d { "Deleted partial file for failed taskId=$taskId" }
+          } catch (e: Exception) {
+            log.w(e) { "Failed to delete partial file for taskId=$taskId" }
+          }
+        }
         mutex.withLock {
           activeDownloads.remove(taskId)
         }
@@ -571,6 +633,7 @@ internal class DownloadCoordinator(
     val current = when {
       context.maxConnections.value > 0 ->
         context.maxConnections.value
+
       context.request.connections > 0 -> context.request.connections
       else -> config.maxConnections
     }
@@ -632,11 +695,10 @@ internal class DownloadCoordinator(
   private suspend fun updateTaskRecord(
     taskId: String,
     update: (TaskRecord) -> TaskRecord,
-  ) {
-    val existing = taskStore.load(taskId)
-    if (existing == null) {
-      log.w { "TaskRecord not found for taskId=$taskId, skipping update" }
-      return
+  ) = recordMutex.withLock {
+    val existing = taskStore.load(taskId) ?: run {
+      log.w { "TaskRecord not found for taskId=$taskId" }
+      return@withLock
     }
     taskStore.save(update(existing))
   }
@@ -658,6 +720,12 @@ internal class DownloadCoordinator(
   }
 
   suspend fun setTaskSpeedLimit(taskId: String, limit: SpeedLimit) {
+    updateTaskRecord(taskId) {
+      it.copy(
+        request = it.request.copy(speedLimit = limit),
+        updatedAt = Clock.System.now(),
+      )
+    }
     mutex.withLock {
       val active = activeDownloads[taskId] ?: return
       val current = active.taskLimiter.delegate
@@ -714,7 +782,7 @@ internal class DownloadCoordinator(
           lastMark = now
         }
         stateFlow.value = DownloadState.Downloading(
-          DownloadProgress(downloaded, total, speed)
+          DownloadProgress(downloaded, total, speed),
         )
         // Update segments in task record periodically
         val snapshot = segmentsFlow.value
@@ -733,7 +801,7 @@ internal class DownloadCoordinator(
       headers = headers,
       preResolved = preResolved,
       maxConnections = MutableStateFlow(
-        request.connections.takeIf { it > 0 } ?: 0
+        request.connections.takeIf { it > 0 } ?: 0,
       ),
     )
   }
@@ -755,7 +823,7 @@ internal class DownloadCoordinator(
       acceptRanges = resolved.supportsResume,
       etag = resolved.metadata[HttpDownloadSource.META_ETAG],
       lastModified = resolved.metadata[
-        HttpDownloadSource.META_LAST_MODIFIED
+        HttpDownloadSource.META_LAST_MODIFIED,
       ],
     )
   }
@@ -772,11 +840,13 @@ internal class DownloadCoordinator(
     val directory = when {
       destination != null && destination.isDirectory() ->
         destination.value.trimEnd('/', '\\')
+
       else -> defaultDir
     }
     val fileName = when {
       destination != null && destination.isName() ->
         destination.value
+
       else -> serverFileName
     }
     if (fileName == null) return directory
