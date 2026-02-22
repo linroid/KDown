@@ -32,7 +32,7 @@ interface KetchDispatchers {
 
   companion object {
     /**
-     * Creates platform-default dispatchers.
+     * Creates platform-default dispatchers with dedicated thread pools.
      *
      * @param networkPoolSize number of threads in the network pool;
      *   typically matches [com.linroid.ketch.api.config.DownloadConfig.maxConnections]

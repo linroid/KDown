@@ -1,9 +1,13 @@
+@file:OptIn(DelicateCoroutinesApi::class)
+
 package com.linroid.ketch.core
 
+import kotlinx.coroutines.CloseableCoroutineDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asCoroutineDispatcher
-import java.util.concurrent.Executors
+import kotlinx.coroutines.newFixedThreadPoolContext
+import kotlinx.coroutines.newSingleThreadContext
 
 internal actual fun createDefaultDispatchers(
   networkPoolSize: Int,
@@ -14,34 +18,23 @@ private class AndroidKetchDispatchers(
   networkPoolSize: Int,
   ioPoolSize: Int,
 ) : KetchDispatchers {
-  private val taskExecutor = Executors.newSingleThreadExecutor { r ->
-    Thread(r, "ketch-task").apply { isDaemon = true }
-  }
-  private val networkExecutor = Executors.newFixedThreadPool(
-    networkPoolSize,
-  ) { r ->
-    Thread(r, "ketch-network").apply { isDaemon = true }
-  }
-  private val ioExecutor = if (ioPoolSize > 0) {
-    Executors.newFixedThreadPool(ioPoolSize) { r ->
-      Thread(r, "ketch-io").apply { isDaemon = true }
-    }
+  override val task: CloseableCoroutineDispatcher =
+    newSingleThreadContext("ketch-task")
+
+  override val network: CloseableCoroutineDispatcher =
+    newFixedThreadPoolContext(networkPoolSize, "ketch-network")
+
+  private val ioPool: CloseableCoroutineDispatcher? = if (ioPoolSize > 0) {
+    newFixedThreadPoolContext(ioPoolSize, "ketch-io")
   } else {
     null
   }
 
-  override val task: CoroutineDispatcher =
-    taskExecutor.asCoroutineDispatcher()
-
-  override val network: CoroutineDispatcher =
-    networkExecutor.asCoroutineDispatcher()
-
-  override val io: CoroutineDispatcher =
-    ioExecutor?.asCoroutineDispatcher() ?: Dispatchers.IO
+  override val io: CoroutineDispatcher = ioPool ?: Dispatchers.IO
 
   override fun close() {
-    taskExecutor.shutdown()
-    networkExecutor.shutdown()
-    ioExecutor?.shutdown()
+    task.close()
+    network.close()
+    ioPool?.close()
   }
 }

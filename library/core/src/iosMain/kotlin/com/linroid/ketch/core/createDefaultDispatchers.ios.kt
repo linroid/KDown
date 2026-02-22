@@ -1,8 +1,14 @@
+@file:OptIn(DelicateCoroutinesApi::class)
+
 package com.linroid.ketch.core
 
+import kotlinx.coroutines.CloseableCoroutineDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.newFixedThreadPoolContext
+import kotlinx.coroutines.newSingleThreadContext
 
 internal actual fun createDefaultDispatchers(
   networkPoolSize: Int,
@@ -13,15 +19,23 @@ private class IosKetchDispatchers(
   networkPoolSize: Int,
   ioPoolSize: Int,
 ) : KetchDispatchers {
-  override val task: CoroutineDispatcher =
-    Dispatchers.Default.limitedParallelism(1)
+  override val task: CloseableCoroutineDispatcher =
+    newSingleThreadContext("ketch-task")
 
-  override val network: CoroutineDispatcher =
-    Dispatchers.Default.limitedParallelism(networkPoolSize)
+  override val network: CloseableCoroutineDispatcher =
+    newFixedThreadPoolContext(networkPoolSize, "ketch-network")
 
-  override val io: CoroutineDispatcher = if (ioPoolSize > 0) {
-    Dispatchers.IO.limitedParallelism(ioPoolSize)
+  private val ioPool: CloseableCoroutineDispatcher? = if (ioPoolSize > 0) {
+    newFixedThreadPoolContext(ioPoolSize, "ketch-io")
   } else {
-    Dispatchers.IO
+    null
+  }
+
+  override val io: CoroutineDispatcher = ioPool ?: Dispatchers.IO
+
+  override fun close() {
+    task.close()
+    network.close()
+    ioPool?.close()
   }
 }
