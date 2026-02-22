@@ -29,7 +29,7 @@ import kotlin.test.assertIs
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
-class DownloadQueueTest {
+class DownloadQueueBasicTest {
 
   private fun createRequest(
     priority: DownloadPriority = DownloadPriority.NORMAL,
@@ -53,6 +53,7 @@ class DownloadQueueTest {
       taskStore = InMemoryTaskStore(),
       config = DownloadConfig(),
       fileNameResolver = DefaultFileNameResolver(),
+      scope = scope,
     )
     return DownloadQueue(
       queueConfig = QueueConfig(
@@ -71,7 +72,7 @@ class DownloadQueueTest {
       try {
         val scheduler = createScheduler(scope)
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -80,10 +81,10 @@ class DownloadQueueTest {
           stateFlow, segmentsFlow,
         )
 
-        // Should have moved past Pending (to Downloading or failed
+        // Should have moved past Queued (to Downloading or failed
         // since fileAccessor throws)
         withTimeout(2.seconds) {
-          stateFlow.first { it != DownloadState.Pending }
+          stateFlow.first { it != DownloadState.Queued }
         }
       } finally {
         scope.cancel()
@@ -98,7 +99,7 @@ class DownloadQueueTest {
       try {
         val scheduler = createScheduler(scope, autoStart = false)
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -123,7 +124,7 @@ class DownloadQueueTest {
 
         // Fill the single slot
         val stateFlow1 =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow1 =
           MutableStateFlow<List<Segment>>(emptyList())
         scheduler.enqueue(
@@ -133,7 +134,7 @@ class DownloadQueueTest {
 
         // Second task should be queued
         val stateFlow2 =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow2 =
           MutableStateFlow<List<Segment>>(emptyList())
         scheduler.enqueue(
@@ -155,7 +156,7 @@ class DownloadQueueTest {
       try {
         val scheduler = createScheduler(scope)
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -167,9 +168,9 @@ class DownloadQueueTest {
           stateFlow, segmentsFlow, preferResume = true,
         )
 
-        // Should have attempted to start (moved past Pending)
+        // Should have attempted to start (moved past Queued)
         withTimeout(2.seconds) {
-          stateFlow.first { it != DownloadState.Pending }
+          stateFlow.first { it != DownloadState.Queued }
         }
       } finally {
         scope.cancel()
@@ -186,7 +187,7 @@ class DownloadQueueTest {
 
         // Fill the single slot
         val stateFlow1 =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow1 =
           MutableStateFlow<List<Segment>>(emptyList())
         scheduler.enqueue(
@@ -196,7 +197,7 @@ class DownloadQueueTest {
 
         // Queue a second task
         val stateFlow2 =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow2 =
           MutableStateFlow<List<Segment>>(emptyList())
         scheduler.enqueue(

@@ -6,7 +6,6 @@ import com.linroid.ketch.api.DownloadState
 import com.linroid.ketch.api.Segment
 import com.linroid.ketch.api.config.QueueConfig
 import com.linroid.ketch.api.log.KetchLogger
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,9 +16,8 @@ internal class DownloadQueue(
   @Volatile
   internal var queueConfig: QueueConfig,
   private val coordinator: DownloadCoordinator,
-  private val scope: CoroutineScope,
 ) {
-  private val log = KetchLogger("Scheduler")
+  private val log = KetchLogger("DownloadQueue")
   private val mutex = Mutex()
   private val activeEntries = mutableMapOf<String, QueueEntry>()
   private val queuedEntries = mutableListOf<QueueEntry>()
@@ -77,9 +75,11 @@ internal class DownloadQueue(
         log.i {
           "Download queued: taskId=$taskId, " +
             "priority=${request.priority}, " +
-            "position=${queuedEntries.indexOfFirst {
-              it.taskId == taskId
-            } + 1}/${queuedEntries.size}"
+            "position=${
+              queuedEntries.indexOfFirst {
+                it.taskId == taskId
+              } + 1
+            }/${queuedEntries.size}"
         }
       }
     }
@@ -193,9 +193,11 @@ internal class DownloadQueue(
       log.i {
         "Priority updated: taskId=$taskId, " +
           "priority=$priority, " +
-          "newPosition=${queuedEntries.indexOfFirst {
-            it.taskId == taskId
-          } + 1}/${queuedEntries.size}"
+          "newPosition=${
+            queuedEntries.indexOfFirst {
+              it.taskId == taskId
+            } + 1
+          }/${queuedEntries.size}"
       }
       promoteNext()
     }
@@ -247,18 +249,18 @@ internal class DownloadQueue(
     if (entry.preempted) {
       entry.preempted = false
       val resumed = coordinator.resume(
-        entry.taskId, scope, entry.stateFlow, entry.segmentsFlow
+        entry.taskId, entry.stateFlow, entry.segmentsFlow,
       )
       if (!resumed) {
         coordinator.start(
-          entry.taskId, entry.request, scope,
-          entry.stateFlow, entry.segmentsFlow
+          entry.taskId, entry.request,
+          entry.stateFlow, entry.segmentsFlow,
         )
       }
     } else {
       coordinator.start(
-        entry.taskId, entry.request, scope,
-        entry.stateFlow, entry.segmentsFlow
+        entry.taskId, entry.request,
+        entry.stateFlow, entry.segmentsFlow,
       )
     }
   }

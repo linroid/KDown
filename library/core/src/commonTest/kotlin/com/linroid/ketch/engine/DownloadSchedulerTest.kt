@@ -10,7 +10,7 @@ import com.linroid.ketch.api.Segment
 import com.linroid.ketch.api.config.DownloadConfig
 import com.linroid.ketch.api.config.QueueConfig
 import com.linroid.ketch.core.engine.DownloadCoordinator
-import com.linroid.ketch.core.engine.DownloadScheduler
+import com.linroid.ketch.core.engine.DownloadQueue
 import com.linroid.ketch.core.engine.HttpDownloadSource
 import com.linroid.ketch.core.engine.DownloadScheduler
 import com.linroid.ketch.core.engine.SourceResolver
@@ -50,7 +50,7 @@ class DownloadSchedulerTest {
 
   private fun createTestComponents(
     scope: CoroutineScope,
-  ): Pair<DownloadScheduler, DownloadScheduler> {
+  ): Pair<DownloadQueue, DownloadScheduler> {
     val engine = FakeHttpEngine()
     val source = HttpDownloadSource(
       httpEngine = engine,
@@ -60,8 +60,9 @@ class DownloadSchedulerTest {
       taskStore = InMemoryTaskStore(),
       config = DownloadConfig(),
       fileNameResolver = DefaultFileNameResolver(),
+      scope = scope,
     )
-    val scheduler = DownloadScheduler(
+    val scheduler = DownloadQueue(
       queueConfig = QueueConfig(maxConcurrentDownloads = 10),
       coordinator = coordinator,
       scope = scope,
@@ -76,7 +77,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -105,7 +106,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -140,7 +141,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -173,7 +174,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -221,7 +222,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -266,7 +267,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -365,7 +366,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 
@@ -453,7 +454,7 @@ class DownloadSchedulerTest {
       val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
       try {
         val stateFlow =
-          MutableStateFlow<DownloadState>(DownloadState.Pending)
+          MutableStateFlow<DownloadState>(DownloadState.Queued)
         val segmentsFlow =
           MutableStateFlow<List<Segment>>(emptyList())
 

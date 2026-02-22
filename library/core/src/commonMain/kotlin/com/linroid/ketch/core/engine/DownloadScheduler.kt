@@ -19,7 +19,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 internal class DownloadScheduler(
-  private val scheduler: DownloadScheduler,
+  private val scheduler: DownloadQueue,
   private val scope: CoroutineScope,
 ) {
   private val log = KetchLogger("DownloadScheduler")
@@ -139,7 +139,7 @@ internal class DownloadScheduler(
   ) {
     if (conditions.isEmpty()) return
 
-    log.d { "Waiting for ${conditions.size} condition(s) for taskId=$taskId" }
+    log.i { "Waiting for ${conditions.size} condition(s) for taskId=$taskId" }
 
     val flows = conditions.map { it.isMet() }
     val combined = when (flows.size) {
@@ -149,7 +149,7 @@ internal class DownloadScheduler(
 
     combined.first { it }
 
-    log.d { "All conditions met for taskId=$taskId" }
+    log.i { "All conditions met for taskId=$taskId" }
   }
 
   /** Whether a task is currently waiting for its schedule/conditions. */
