@@ -2,40 +2,15 @@
 
 package com.linroid.ketch.core
 
-import kotlinx.coroutines.CloseableCoroutineDispatcher
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.newFixedThreadPoolContext
 import kotlinx.coroutines.newSingleThreadContext
 
 internal actual fun createDefaultDispatchers(
   networkPoolSize: Int,
   ioPoolSize: Int,
-): KetchDispatchers = IosKetchDispatchers(networkPoolSize, ioPoolSize)
-
-private class IosKetchDispatchers(
-  networkPoolSize: Int,
-  ioPoolSize: Int,
-) : KetchDispatchers {
-  override val task: CloseableCoroutineDispatcher =
-    newSingleThreadContext("ketch-task")
-
-  override val network: CloseableCoroutineDispatcher =
-    newFixedThreadPoolContext(networkPoolSize, "ketch-network")
-
-  private val ioPool: CloseableCoroutineDispatcher? = if (ioPoolSize > 0) {
-    newFixedThreadPoolContext(ioPoolSize, "ketch-io")
-  } else {
-    null
-  }
-
-  override val io: CoroutineDispatcher = ioPool ?: Dispatchers.IO
-
-  override fun close() {
-    task.close()
-    network.close()
-    ioPool?.close()
-  }
-}
+): KetchDispatchers = KetchDispatchers(
+  task = newSingleThreadContext("ketch-task"),
+  network = newFixedThreadPoolContext(networkPoolSize, "ketch-network"),
+  io = newFixedThreadPoolContext(ioPoolSize, "ketch-io"),
+)
