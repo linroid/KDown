@@ -4,9 +4,8 @@ package com.linroid.ketch.core.file
 
 import android.net.Uri
 import com.linroid.ketch.core.AndroidContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import java.io.RandomAccessFile
-
 
 /**
  * Creates a [FileAccessor] for the given [path], supporting both
@@ -16,13 +15,16 @@ import java.io.RandomAccessFile
  * backed by the Android [ContentResolver][android.content.ContentResolver]
  * is returned. For regular file paths, a [PathFileAccessor] is used.
  */
-actual fun createFileAccessor(path: String): FileAccessor {
+actual fun createFileAccessor(
+  path: String,
+  ioDispatcher: CoroutineDispatcher,
+): FileAccessor {
   val uri = Uri.parse(path)
   return if (uri.isRelative) {
-    PathFileAccessor(path, Dispatchers.IO) { realPath ->
+    PathFileAccessor(path, ioDispatcher) { realPath ->
       JvmRandomAccessHandle(RandomAccessFile(realPath, "rw"))
     }
   } else {
-    ContentUriFileAccessor(AndroidContext.get(), uri)
+    ContentUriFileAccessor(AndroidContext.get(), uri, ioDispatcher)
   }
 }

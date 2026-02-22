@@ -1,6 +1,12 @@
 package com.linroid.ketch.core.file
 
-actual fun createFileAccessor(path: String): FileAccessor {
+import kotlinx.coroutines.CoroutineDispatcher
+
+@Suppress("UNUSED_PARAMETER")
+actual fun createFileAccessor(
+  path: String,
+  ioDispatcher: CoroutineDispatcher,
+): FileAccessor {
   return WasmFileAccessor()
 }
 

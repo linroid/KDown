@@ -17,6 +17,7 @@ import kotlinx.serialization.Serializable
  * @property bufferSize Size of the download buffer in bytes
  * @property speedLimit Global speed limit applied across all downloads
  * @property queueConfig Configuration for the download queue
+ * @property dispatcherConfig Configuration for coroutine dispatchers
  */
 @Serializable
 data class DownloadConfig(
@@ -29,6 +30,7 @@ data class DownloadConfig(
   val bufferSize: Int = 8192,
   val speedLimit: SpeedLimit = SpeedLimit.Unlimited,
   val queueConfig: QueueConfig = QueueConfig(),
+  val dispatcherConfig: DispatcherConfig = DispatcherConfig(),
 ) {
   init {
     require(maxConnections > 0) { "maxConnections must be greater than 0" }

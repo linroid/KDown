@@ -21,6 +21,7 @@ import com.linroid.ketch.core.task.TaskRecord
 import com.linroid.ketch.core.task.TaskState
 import com.linroid.ketch.core.task.TaskStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -41,6 +42,7 @@ internal class DownloadCoordinator(
   private val config: DownloadConfig,
   private val fileNameResolver: FileNameResolver,
   private val globalLimiter: SpeedLimiter = SpeedLimiter.Unlimited,
+  private val ioDispatcher: CoroutineDispatcher,
 ) {
   private val log = KetchLogger("Coordinator")
   private val mutex = Mutex()
@@ -227,7 +229,7 @@ internal class DownloadCoordinator(
       )
     }
 
-    val fileAccessor = createFileAccessor(outputPath)
+    val fileAccessor = createFileAccessor(outputPath, ioDispatcher)
 
     val taskLimiter = mutex.withLock {
       activeDownloads[taskId]?.let {
@@ -433,7 +435,7 @@ internal class DownloadCoordinator(
           "No outputPath for taskId=${taskRecord.taskId}"
         )
       )
-    val fileAccessor = createFileAccessor(outputPath)
+    val fileAccessor = createFileAccessor(outputPath, ioDispatcher)
 
     val taskLimiter = mutex.withLock {
       activeDownloads[taskId]?.let {

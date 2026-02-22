@@ -1,10 +1,13 @@
 package com.linroid.ketch.core.file
 
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import java.io.RandomAccessFile
 
-actual fun createFileAccessor(path: String): FileAccessor {
-  return PathFileAccessor(path, Dispatchers.IO) { realPath ->
+actual fun createFileAccessor(
+  path: String,
+  ioDispatcher: CoroutineDispatcher,
+): FileAccessor {
+  return PathFileAccessor(path, ioDispatcher) { realPath ->
     JvmRandomAccessHandle(RandomAccessFile(realPath, "rw"))
   }
 }

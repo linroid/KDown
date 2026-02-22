@@ -7,7 +7,7 @@ import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
 import com.linroid.ketch.api.log.KetchLogger
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -18,10 +18,13 @@ import java.io.IOException
  *
  * Uses [Os.lseek] + [Os.write] for random-access writes and
  * [Os.fstat] for file size. No `DocumentFile` dependency.
+ *
+ * @param ioDispatcher dispatcher for blocking I/O operations
  */
 internal class ContentUriFileAccessor(
   private val context: Context,
   private val uri: Uri,
+  private val ioDispatcher: CoroutineDispatcher,
 ) : FileAccessor {
 
   private val log = KetchLogger("FileAccessor")
@@ -39,7 +42,7 @@ internal class ContentUriFileAccessor(
   }
 
   override suspend fun writeAt(offset: Long, data: ByteArray) {
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       mutex.withLock {
         Os.lseek(fileDescriptor, offset, OsConstants.SEEK_SET)
         if (data.isEmpty()) return@withLock
@@ -61,7 +64,7 @@ internal class ContentUriFileAccessor(
   }
 
   override suspend fun flush() {
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       mutex.withLock {
         fileDescriptor.sync()
       }
@@ -74,7 +77,7 @@ internal class ContentUriFileAccessor(
   }
 
   override suspend fun delete() {
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       mutex.withLock {
         close()
         log.d { "Deleting document: $uri" }
@@ -83,7 +86,7 @@ internal class ContentUriFileAccessor(
     }
   }
 
-  override suspend fun size(): Long = withContext(Dispatchers.IO) {
+  override suspend fun size(): Long = withContext(ioDispatcher) {
     Os.fstat(fileDescriptor).st_size
   }
 

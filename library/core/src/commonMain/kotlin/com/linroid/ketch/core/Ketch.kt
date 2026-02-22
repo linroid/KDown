@@ -31,7 +31,6 @@ import com.linroid.ketch.core.task.TaskRecord
 import com.linroid.ketch.core.task.TaskState
 import com.linroid.ketch.core.task.TaskStore
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,6 +56,8 @@ import kotlin.uuid.Uuid
  * @param additionalSources extra [DownloadSource] implementations
  *   (e.g., torrent, media). HTTP is always included as a fallback.
  * @param logger logging backend
+ * @param dispatchers dedicated dispatchers for task management,
+ *   network operations, and file I/O
  */
 class Ketch(
   private val httpEngine: HttpEngine,
@@ -66,6 +67,10 @@ class Ketch(
   private val fileNameResolver: FileNameResolver = DefaultFileNameResolver(),
   additionalSources: List<DownloadSource> = emptyList(),
   logger: Logger = Logger.None,
+  private val dispatchers: KetchDispatchers =
+    KetchDispatchers.fromConfig(
+      config.dispatcherConfig, config.maxConnections,
+    ),
 ) : KetchApi {
   private val startMark = TimeSource.Monotonic.markNow()
 
@@ -111,8 +116,13 @@ class Ketch(
     }
   }
 
-  private val scope =
-    CoroutineScope(SupervisorJob() + Dispatchers.Default)
+  /** Scope for task coordination (scheduling, queue, state). */
+  private val taskScope =
+    CoroutineScope(SupervisorJob() + dispatchers.task)
+
+  /** Scope for network-bound download execution. */
+  private val networkScope =
+    CoroutineScope(SupervisorJob() + dispatchers.network)
 
   private val coordinator = DownloadCoordinator(
     sourceResolver = sourceResolver,
@@ -120,17 +130,18 @@ class Ketch(
     config = config,
     fileNameResolver = fileNameResolver,
     globalLimiter = globalLimiter,
+    ioDispatcher = dispatchers.io,
   )
 
   private val scheduler = DownloadScheduler(
     queueConfig = config.queueConfig,
     coordinator = coordinator,
-    scope = scope,
+    scope = networkScope,
   )
 
   private val scheduleManager = ScheduleManager(
     scheduler = scheduler,
-    scope = scope,
+    scope = taskScope,
   )
 
   private val tasksMutex = Mutex()
@@ -194,11 +205,12 @@ class Ketch(
           state is DownloadState.Failed
         ) {
           val resumed = coordinator.resume(
-            taskId, scope, stateFlow, segmentsFlow, dest,
+            taskId, networkScope, stateFlow, segmentsFlow, dest,
           )
           if (!resumed) {
             coordinator.start(
-              taskId, request, scope, stateFlow, segmentsFlow,
+              taskId, request, networkScope,
+              stateFlow, segmentsFlow,
             )
           }
         } else {
@@ -355,11 +367,12 @@ class Ketch(
           state is DownloadState.Failed
         ) {
           val resumed = coordinator.resume(
-            record.taskId, scope, stateFlow, segmentsFlow, dest,
+            record.taskId, networkScope, stateFlow,
+            segmentsFlow, dest,
           )
           if (!resumed) {
             coordinator.startFromRecord(
-              record, scope, stateFlow, segmentsFlow,
+              record, networkScope, stateFlow, segmentsFlow,
             )
           }
         } else {
@@ -456,7 +469,7 @@ class Ketch(
     taskId: String,
     stateFlow: MutableStateFlow<DownloadState>,
   ) {
-    scope.launch {
+    taskScope.launch {
       val terminalState =
         stateFlow.filterIsInstance<DownloadState>()
           .first { it.isTerminal }
@@ -509,7 +522,9 @@ class Ketch(
   override fun close() {
     log.i { "Closing Ketch" }
     httpEngine.close()
-    scope.cancel()
+    taskScope.cancel()
+    networkScope.cancel()
+    dispatchers.close()
   }
 
   companion object
